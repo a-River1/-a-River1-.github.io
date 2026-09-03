@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ariel River</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --shell: #c9c7d6;
+    --shell-hi: #e4e2ee;
+    --shell-dark: #9d9ab1;
+    --shell-shadow: #6f6c82;
+    --bezel: #2b2b3a;
+    --lcd-0: #0f380f;
+    --lcd-1: #306230;
+    --lcd-2: #8bac0f;
+    --lcd-3: #9bbc0f;
+    --btn-ab: #7b1e42;
+    --btn-ab-dark: #4f1129;
+    --led: #ff3b30;
+    --pixel: 'Press Start 2P', monospace;
+    --mono: 'VT323', monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; margin: 0; }
+
+  body {
+    background: radial-gradient(circle at 50% 0%, var(--shell-hi), var(--shell) 70%);
+    font-family: var(--mono);
+    color: var(--lcd-0);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ---------- Console header ---------- */
+  .console-header {
+    flex: 0 0 auto;
+    background: var(--shell);
+    border-bottom: 4px solid var(--shell-dark);
+    padding: 10px 22px 0;
+  }
+
+  .brand-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--pixel);
+    font-size: 0.6rem;
+    color: #4b4b63;
+    letter-spacing: 1px;
+  }
+
+  .power-led {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--led);
+    box-shadow: 0 0 6px var(--led), 0 0 2px #fff inset;
+    flex-shrink: 0;
+  }
+
+  .now-playing {
+    font-family: var(--pixel);
+    font-size: 0.55rem;
+    color: var(--btn-ab);
+  }
+
+  /* ---------- Cartridge shelf (the nav) ---------- */
+  .cartridge-shelf {
+    display: flex;
+    gap: 14px;
+    align-items: flex-end;
+    padding: 6px 4px 12px;
+    overflow-x: auto;
+  }
+
+  .cartridge {
+    position: relative;
+    width: 56px;
+    height: 70px;
+    flex-shrink: 0;
+    border: 2px solid rgba(0,0,0,0.35);
+    border-radius: 4px 4px 2px 2px;
+    cursor: pointer;
+    background: none;
+    padding: 0;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .cartridge::before {
+    content: "";
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 8px;
+    background: var(--bezel);
+    border-radius: 2px 2px 0 0;
+  }
+
+  .cartridge .grip {
+    position: absolute;
+    top: 8px;
+    left: 6px;
+    right: 6px;
+    height: 8px;
+    background-image: repeating-linear-gradient(
+      to bottom, rgba(0,0,0,0.18), rgba(0,0,0,0.18) 2px, transparent 2px, transparent 4px
+    );
+  }
+
+  .cartridge .label {
+    position: absolute;
+    top: 22px;
+    left: 5px;
+    right: 5px;
+    bottom: 8px;
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-family: var(--pixel);
+    font-size: 0.38rem;
+    line-height: 1.4;
+    color: #2b2b3a;
+    padding: 3px;
+  }
+
+  .cartridge .tag {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--pixel);
+    font-size: 0.4rem;
+    color: var(--btn-ab);
+    white-space: nowrap;
+    opacity: 0;
+  }
+
+  .cart-home  { background: #d8d8e6; }
+  .cart-summary { background: #4d84c9; }
+  .cart-projects { background: #c9463b; }
+  .cart-contact { background: #d9ab2c; }
+  .cart-pokedex { background: #6b9e8a; opacity: 0.2; }
+  .cart-pokedex:hover, .cart-pokedex:focus { opacity: 1; }
+
+  .cartridge.focused {
+    transform: translateY(-8px);
+    box-shadow: 0 6px 0 rgba(0,0,0,0.25);
+  }
+
+  .cartridge.inserted {
+    transform: translateY(-14px);
+  }
+
+  .cartridge.inserted .tag {
+    opacity: 1;
+  }
+
+  .cartridge.inserted::after {
+    content: "";
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--btn-ab);
+  }
+
+  /* ---------- Screen ---------- */
+  .screen-wrap {
+    flex: 1 1 auto;
+    background: var(--bezel);
+    padding: 10px 16px;
+    min-height: 0;
+    position: relative;
+  }
+
+  .screen {
+    height: 100%;
+    overflow-y: auto;
+    background: var(--lcd-3);
+    position: relative;
+    animation: flicker-on 0.6s ease-out;
+    scroll-behavior: smooth;
+  }
+
+  .screen.powered-off {
+    animation: power-off 0.4s ease-in forwards;
+    pointer-events: none;
+  }
+
+  .screen.swapping {
+    animation: flicker-on 0.35s ease-out;
+  }
+
+  @keyframes flicker-on {
+    0% { opacity: 0; transform: scaleY(0.02); }
+    40% { opacity: 1; transform: scaleY(1.02); }
+    60% { transform: scaleY(0.98); }
+    100% { transform: scaleY(1); }
+  }
+
+  @keyframes power-off {
+    0% { opacity: 1; transform: scaleY(1); }
+    60% { opacity: 1; transform: scaleY(0.03); }
+    100% { opacity: 0; transform: scaleY(0.01); }
+  }
+
+  .screen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom, rgba(15,56,15,0.08), rgba(15,56,15,0.08) 2px, transparent 2px, transparent 4px
+    );
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  section {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 48px 24px;
+    scroll-margin-top: 20px;
+  }
+
+  h2 {
+    font-family: var(--pixel);
+    font-size: 1rem;
+    margin-bottom: 22px;
+  }
+
+  .cartridge-tag {
+    display: inline-block;
+    font-family: var(--pixel);
+    font-size: 0.6rem;
+    background: var(--lcd-0);
+    color: var(--lcd-3);
+    padding: 4px 8px;
+    margin-bottom: 12px;
+  }
+
+  p, li, a { font-size: 1.25rem; line-height: 1.5; }
+
+  .pixel-frame {
+    background: var(--lcd-0);
+    padding: 5px;
+    clip-path: polygon(
+      0 10px, 10px 10px, 10px 0, calc(100% - 10px) 0, calc(100% - 10px) 10px, 100% 10px,
+      100% calc(100% - 10px), calc(100% - 10px) calc(100% - 10px), calc(100% - 10px) 100%,
+      10px 100%, 10px calc(100% - 10px), 0 calc(100% - 10px)
+    );
+  }
+
+  .pixel-frame-inner {
+    background: var(--lcd-3);
+    clip-path: polygon(
+      0 6px, 6px 6px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px,
+      100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px), calc(100% - 6px) 100%,
+      6px 100%, 6px calc(100% - 6px), 0 calc(100% - 6px)
+    );
+    padding: 4px;
+  }
+
+  .hero { display: flex; align-items: center; gap: 28px; padding-top: 40px; }
+
+  .hero-photo { flex-shrink: 0; width: 128px; height: 128px; }
+
+  .hero-photo .pixel-frame-inner {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--pixel); font-size: 0.55rem; text-align: center;
+    overflow: hidden;
+  }
+
+  .hero-photo img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+
+  .hero-text h1 { font-family: var(--pixel); font-size: 1.25rem; margin: 0 0 12px 0; line-height: 1.6; }
+  .hero-text p { color: var(--lcd-1); }
+
+  .blink-cursor { display: inline-block; animation: blink 1s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  #summary .placeholder-box {
+    border: 3px dashed var(--lcd-1);
+    padding: 28px;
+    text-align: center;
+    color: var(--lcd-1);
+    font-family: var(--pixel);
+    font-size: 0.6rem;
+    line-height: 2;
+  }
+
+  .projects-grid { display: flex; flex-direction: column; gap: 16px; }
+
+  .project-card {
+    position: relative;
+    border: 3px solid var(--lcd-0);
+    padding: 16px 18px;
+    background: var(--lcd-3);
+  }
+
+  .project-card h3 { font-family: var(--pixel); font-size: 0.75rem; margin: 0 0 10px 0; }
+  .project-card p { margin: 0 0 10px 0; color: var(--lcd-1); }
+  .project-card a { font-family: var(--pixel); font-size: 0.6rem; color: var(--lcd-0); text-decoration: none; }
+  .project-card a:hover { text-decoration: underline; }
+  .project-card.selected { background: var(--lcd-2); }
+
+  .project-card::before {
+    content: ""; position: absolute; top: -8px; left: -8px; width: 14px; height: 14px;
+    border-top: 4px solid transparent; border-left: 4px solid transparent;
+  }
+  .project-card.selected::before { border-top-color: var(--btn-ab); border-left-color: var(--btn-ab); }
+
+  .project-card::after {
+    content: ""; position: absolute; bottom: -8px; right: -8px; width: 14px; height: 14px;
+    border-bottom: 4px solid transparent; border-right: 4px solid transparent;
+  }
+  .project-card.selected::after { border-bottom-color: var(--btn-ab); border-right-color: var(--btn-ab); }
+
+  #contact .contact-links { display: flex; flex-direction: column; gap: 12px; }
+  #contact a { color: var(--lcd-0); text-decoration: none; font-family: var(--pixel); font-size: 0.65rem; }
+  #contact a::before { content: "\25B8  "; }
+  #contact a:hover { color: var(--btn-ab); }
+
+  footer { text-align: center; padding: 30px 24px 50px; font-family: var(--pixel); font-size: 0.5rem; color: var(--lcd-1); }
+
+  .hint-strip {
+    text-align: center;
+    font-family: var(--pixel);
+    font-size: 0.42rem;
+    color: var(--lcd-1);
+    padding-top: 10px;
+    padding-bottom: 18px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ---------- Controls ---------- */
+  .controls {
+    flex: 0 0 auto;
+    background: var(--shell);
+    border-top: 4px solid var(--shell-dark);
+    padding: 18px 26px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .dpad {
+    display: grid;
+    grid-template-columns: 40px 40px 40px;
+    grid-template-rows: 40px 40px 40px;
+    margin-bottom: 28px;
+  }
+
+  .dpad button {
+    background: #38384a;
+    border: none;
+    box-shadow: 0 3px 0 #1c1c26;
+    cursor: pointer;
+    color: #cfcfe0;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dpad button:active, .dpad button.pressed { transform: translateY(2px); box-shadow: 0 1px 0 #1c1c26; }
+
+  .dpad .up    { grid-column: 2; grid-row: 1; border-radius: 4px 4px 0 0; }
+  .dpad .left  { grid-column: 1; grid-row: 2; border-radius: 4px 0 0 4px; }
+  .dpad .center{ grid-column: 2; grid-row: 2; background: #2c2c3a; box-shadow: none; cursor: default; }
+  .dpad .right { grid-column: 3; grid-row: 2; border-radius: 0 4px 4px 0; }
+  .dpad .down  { grid-column: 2; grid-row: 3; border-radius: 0 0 4px 4px; }
+
+  .center-buttons { display: flex; flex-direction: column; align-items: center; gap: 16px; padding-bottom: 6px; margin-bottom: 28px; }
+  .start-select { display: flex; gap: 14px; transform: rotate(-15deg); margin-bottom: 4px; }
+  .start-select button {
+    width: 44px; height: 14px; border-radius: 8px; background: #8b899c; border: none;
+    box-shadow: 0 2px 0 #5f5d70; cursor: pointer;
+  }
+  .start-select button:active, .start-select button.pressed { transform: translateY(2px); box-shadow: none; }
+  .start-select-labels { display: flex; gap: 20px; font-family: var(--pixel); font-size: 0.45rem; color: #5f5d70; white-space: nowrap; }
+
+  .ab-buttons { display: flex; align-items: flex-end; gap: 14px; transform: rotate(-20deg); margin-bottom: 44px; }
+  .ab-buttons .btn-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .ab-buttons button {
+    width: 46px; height: 46px; border-radius: 50%; background: var(--btn-ab); border: none;
+    box-shadow: 0 4px 0 var(--btn-ab-dark); cursor: pointer; color: #e8c9d4;
+    font-family: var(--pixel); font-size: 0.75rem;
+  }
+  .ab-buttons button:active, .ab-buttons button.pressed { transform: translateY(3px); box-shadow: 0 1px 0 var(--btn-ab-dark); }
+  .ab-buttons .btn-col.b { margin-top: 14px; }
+  .btn-label { font-family: var(--pixel); font-size: 0.5rem; color: #5f5d70; transform: rotate(20deg); }
+
+  @media (max-width: 640px) {
+    .hero { flex-direction: column; text-align: center; }
+    .controls { padding: 14px 14px 18px; }
+    .dpad { grid-template-columns: 34px 34px 34px; grid-template-rows: 34px 34px 34px; }
+    .ab-buttons button { width: 38px; height: 38px; font-size: 0.6rem; }
+    .cartridge { width: 46px; height: 58px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="console-header">
+  <div class="brand-row">
+    <div class="brand"><span class="power-led"></span>GAME BOY &mdash; ARIEL RIVER</div>
+    <div class="now-playing" id="nowPlaying">NOW PLAYING: HOME</div>
+  </div>
+  <nav class="cartridge-shelf" id="cartridgeShelf">
+    <button class="cartridge cart-home focused inserted" data-index="0" aria-label="Home cartridge">
+      <span class="tag">&#9654; LOADED</span>
+      <span class="grip"></span>
+      <span class="label">HOME</span>
+    </button>
+    <button class="cartridge cart-summary" data-index="1" aria-label="Summary cartridge">
+      <span class="tag">&#9654; LOADED</span>
+      <span class="grip"></span>
+      <span class="label">SUMMARY</span>
+    </button>
+    <button class="cartridge cart-projects" data-index="2" aria-label="Projects cartridge">
+      <span class="tag">&#9654; LOADED</span>
+      <span class="grip"></span>
+      <span class="label">PROJECTS</span>
+    </button>
+    <button class="cartridge cart-contact" data-index="3" aria-label="Contact cartridge">
+      <span class="tag">&#9654; LOADED</span>
+      <span class="grip"></span>
+      <span class="label">CONTACT</span>
+    </button>
+    <a class="cartridge cart-pokedex" href="elements-pokedex.html" aria-label="Elements Pokédex cartridge" title="Elements Pokédex">
+      <span class="grip"></span>
+      <span class="label">DEX</span>
+    </a>
+  </nav>
+</header>
+
+<div class="screen-wrap">
+  <div class="screen" id="screen">
+
+    <section id="top" class="hero">
+      <div class="hero-photo pixel-frame">
+        <div class="pixel-frame-inner">
+          <img src="ariver.jpg" alt="Ariel River">
+        </div>
+      </div>
+      <div class="hero-text">
+        <h1>ARIEL RIVER<span class="blink-cursor">_</span></h1>
+        <p>Hi, I'm Ariel!  I'm a chemistry major at Carnegie Mellon University specializing in RNA sequencing.  Welcome to my website!</p>
+      </div>
+    </section>
+
+    <section id="summary">
+      <span class="cartridge-tag">SAVE FILE</span>
+      <h2>Summary</h2>
+      <div class="placeholder-box">Hello, I'm Ariel.  Currently I am a sophmore studying chemistry at Carnegie Mellon University and am doing research on circRNA fragments in Parkinson's Disease.  My skills for research include proficiency in Python, and also laboratory/biological techniques.  I am a former USA National Karate Team member and continue to represent my country internationally.  You can also come find me around Pittsburgh playing in the jazz scene!</div>
+    </section>
+
+    <section id="projects">
+      <span class="cartridge-tag">QUEST LOG</span>
+      <h2>Projects</h2>
+      <div class="projects-grid" id="projectsGrid">
+        <div class="project-card" data-index="0">
+          <h3>Characterization of microRNA in Gastroesophageal Reflux Disease</h3>
+          <hp>Gastroesophageal Reflux Disease (GERD) is described as a chronic acid reflux condition.  GERD and subsequent complications is characterized by certain inflammatory proteins.  MicroRNAs can regulate the mRNAs responsible for said proteins.  This research study aimed to better understand the role that microRNA plays in GERD.</p>
+          <a href="%28LISEF%29%20Characterizing%20miRNA%20Associated%20with%20Gastroesophageal%20Reflux%20Disease.pdf" target="_blank" rel="noopener noreferrer">VIEW &#9658;</a>
+        </div>
+        <div class="project-card" data-index="1">
+          <h3>Synthesis of PPP1b9r Circular RNA and Assessment of its Structure</h3>
+          <hp>Formation of primers for circRNA transcripts to better understand how G-quadruplex structures form off of RNA fragments.  Linear counterparts of the PPP1b9r fragment form G-quadruplex structures which often lead to the formation of lewi bodies and eventually Parkinson's.  Forcing circular RNA fragments to take their palce could alter this.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact">
+      <span class="cartridge-tag">LINK CABLE</span>
+      <h2>Contact</h2>
+      <div class="contact-links">
+        <a href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=arielriverx242@gmail.com" target="_blank" rel="noopener noreferrer">arielriverx242@gmail.com</a>
+        <a href="https://github.com/A-River1" target="_blank" rel="noopener noreferrer">A-River1</a>
+      </div>
+    </section>
+
+    <footer>&copy; 2026 ARIEL RIVER &mdash; PRESS START</footer>
+
+  </div>
+</div>
+
+<div class="hint-strip">D-PAD SWAPS CARTRIDGES &nbsp; B EJECTS HOME &nbsp; ON PROJECTS: &#9650;&#9660; PICKS ITEM</div>
+
+<div class="controls">
+  <div class="dpad">
+    <button class="up" data-action="up" aria-label="Up">&#9650;</button>
+    <button class="left" data-action="left" aria-label="Left">&#9664;</button>
+    <div class="center"></div>
+    <button class="right" data-action="right" aria-label="Right">&#9654;</button>
+    <button class="down" data-action="down" aria-label="Down">&#9660;</button>
+  </div>
+
+  <div class="center-buttons">
+    <div class="start-select">
+      <button data-action="select" aria-label="Select"></button>
+      <button data-action="start" aria-label="Start"></button>
+    </div>
+    <div class="start-select-labels"><span>SELECT</span><span>START</span></div>
+  </div>
+
+  <div class="ab-buttons">
+    <div class="btn-col b">
+      <button data-action="b" aria-label="B button">B</button>
+      <span class="btn-label">EJECT</span>
+    </div>
+    <div class="btn-col a">
+      <button data-action="a" aria-label="A button">A</button>
+      <span class="btn-label">INSERT</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var screen = document.getElementById('screen');
+  var sectionIds = ['top', 'summary', 'projects', 'contact'];
+  var sectionNames = ['HOME', 'SUMMARY', 'PROJECTS', 'CONTACT'];
+  var sections = sectionIds.map(function (id) { return document.getElementById(id); });
+  var cartridges = Array.prototype.slice.call(document.querySelectorAll('.cartridge[data-index]'));
+  var nowPlaying = document.getElementById('nowPlaying');
+
+  var insertedIndex = 0; // which cartridge is actually loaded (active section)
+
+  var projectCards = Array.prototype.slice.call(document.querySelectorAll('.project-card'));
+  var projectIndex = -1;
+  var poweredOn = true;
+
+  var audioCtx = null;
+  function beep(freq, dur) {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + dur);
+    } catch (e) { /* ignore */ }
+  }
+
+  function updateShelfVisuals() {
+    cartridges.forEach(function (c, i) {
+      c.classList.toggle('focused', i === insertedIndex);
+      c.classList.toggle('inserted', i === insertedIndex);
+    });
+  }
+
+  function swapScreen() {
+    screen.classList.remove('swapping');
+    void screen.offsetWidth;
+    screen.classList.add('swapping');
+  }
+
+  function insertCartridge(index) {
+    insertedIndex = index;
+    updateShelfVisuals();
+    nowPlaying.textContent = 'NOW PLAYING: ' + sectionNames[index];
+    swapScreen();
+    beep(392, 0.06);
+    sections[index].scrollIntoView({ behavior: 'auto', block: 'start' });
+    projectIndex = -1;
+    updateProjectSelection();
+  }
+
+  function browseShelf(dir) {
+    insertCartridge((insertedIndex + dir + cartridges.length) % cartridges.length);
+  }
+
+  function updateProjectSelection() {
+    projectCards.forEach(function (card, i) { card.classList.toggle('selected', i === projectIndex); });
+  }
+
+  function cycleProject(dir) {
+    if (projectIndex === -1) projectIndex = 0;
+    else projectIndex = (projectIndex + dir + projectCards.length) % projectCards.length;
+    updateProjectSelection();
+    projectCards[projectIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    beep(330, 0.05);
+  }
+
+  function flashScreen() {
+    screen.style.filter = 'brightness(1.3)';
+    setTimeout(function () { screen.style.filter = ''; }, 90);
+  }
+
+  function pressA() {
+    if (insertedIndex === 2 && projectIndex > -1) {
+      flashScreen();
+      beep(660, 0.08);
+      var link = projectCards[projectIndex].querySelector('a');
+      if (link) { link.style.textDecoration = 'underline'; }
+    } else {
+      beep(660, 0.08);
+      flashScreen();
+    }
+  }
+
+  function pressB() {
+    beep(220, 0.08);
+    projectIndex = -1;
+    updateProjectSelection();
+    insertCartridge(0);
+  }
+
+  function togglePower() {
+    poweredOn = !poweredOn;
+    beep(poweredOn ? 880 : 140, 0.15);
+    if (!poweredOn) {
+      screen.classList.add('powered-off');
+    } else {
+      screen.classList.remove('powered-off');
+      screen.style.animation = 'none';
+      void screen.offsetWidth;
+      screen.style.animation = '';
+    }
+  }
+
+  var paletteIndex = 0;
+  var palettes = [
+    { 0: '#0f380f', 1: '#306230', 2: '#8bac0f', 3: '#9bbc0f' },
+    { 0: '#2c1e74', 1: '#5b4b8a', 2: '#a99bd1', 3: '#e3dcf4' },
+    { 0: '#331111', 1: '#7a2e2e', 2: '#c97b5a', 3: '#f2d3a7' }
+  ];
+
+  function cyclePalette() {
+    paletteIndex = (paletteIndex + 1) % palettes.length;
+    var p = palettes[paletteIndex];
+    var root = document.documentElement.style;
+    root.setProperty('--lcd-0', p[0]);
+    root.setProperty('--lcd-1', p[1]);
+    root.setProperty('--lcd-2', p[2]);
+    root.setProperty('--lcd-3', p[3]);
+    beep(440, 0.06);
+  }
+
+  function handleAction(action) {
+    switch (action) {
+      case 'left': browseShelf(-1); break;
+      case 'right': browseShelf(1); break;
+      case 'up': if (insertedIndex === 2) { cycleProject(-1); } else { browseShelf(-1); } break;
+      case 'down': if (insertedIndex === 2) { cycleProject(1); } else { browseShelf(1); } break;
+      case 'a': pressA(); break;
+      case 'b': pressB(); break;
+      case 'start': togglePower(); break;
+      case 'select': cyclePalette(); break;
+    }
+  }
+
+  document.querySelectorAll('[data-action]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      handleAction(btn.getAttribute('data-action'));
+      btn.classList.add('pressed');
+      setTimeout(function () { btn.classList.remove('pressed'); }, 120);
+    });
+  });
+
+  // clicking a cartridge directly picks + inserts it
+  cartridges.forEach(function (c, i) {
+    c.addEventListener('click', function () {
+      beep(660, 0.08);
+      insertCartridge(i);
+    });
+  });
+
+  var keyMap = {
+    'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right',
+    'z': 'a', 'Z': 'a', 'x': 'b', 'X': 'b',
+    'Enter': 'start', 'Shift': 'select'
+  };
+
+  document.addEventListener('keydown', function (e) {
+    var action = keyMap[e.key];
+    if (!action) return;
+    e.preventDefault();
+    handleAction(action);
+    var el = document.querySelector('[data-action="' + action + '"]');
+    if (el) {
+      el.classList.add('pressed');
+      setTimeout(function () { el.classList.remove('pressed'); }, 120);
+    }
+  });
+
+  // manual scroll keeps the loaded cartridge in sync
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        var idx = sectionIds.indexOf(entry.target.id);
+        if (idx !== -1 && idx !== insertedIndex) {
+          insertedIndex = idx;
+          updateShelfVisuals();
+          nowPlaying.textContent = 'NOW PLAYING: ' + sectionNames[idx];
+        }
+      }
+    });
+  }, { root: screen, threshold: 0.5 });
+
+  sections.forEach(function (s) { observer.observe(s); });
+
+  updateShelfVisuals();
+})();
+</script>
+
+</body>
+</html>

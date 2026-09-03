@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elements Pokédex | Ariel River</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --lcd-0: #0f380f;
+    --lcd-1: #306230;
+    --lcd-2: #8bac0f;
+    --lcd-3: #9bbc0f;
+    --shell: #c9c7d6;
+    --shell-hi: #e4e2ee;
+    --shell-dark: #9d9ab1;
+    --bezel: #2b2b3a;
+    --red: #c9463b;
+    --gold: #d9ab2c;
+    --pixel: 'Press Start 2P', monospace;
+    --mono: 'VT323', monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: radial-gradient(circle at 50% 0%, var(--shell-hi), var(--shell) 70%);
+    color: var(--lcd-0);
+    font-family: var(--mono);
+    padding: 18px;
+  }
+  .pokedex-shell { max-width: 1120px; margin: 0 auto; background: var(--bezel); padding: 12px; box-shadow: 8px 8px 0 rgba(43,43,58,.3); }
+  .screen { background: var(--lcd-3); padding: clamp(20px, 4vw, 44px); min-height: calc(100vh - 60px); }
+  .topline, .tools, .dex-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .topline { border-bottom: 3px solid var(--lcd-0); padding-bottom: 14px; }
+  .brand, h1, h2, .back-link, button, select, input { font-family: var(--pixel); }
+  .brand { font-size: clamp(.55rem, 1.4vw, .8rem); line-height: 1.7; }
+  .led { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ff3b30; box-shadow: 0 0 7px #ff3b30; margin-right: 8px; }
+  .back-link { color: var(--lcd-0); font-size: .55rem; text-decoration: none; border: 2px solid var(--lcd-0); padding: 10px; }
+  .back-link:hover, .back-link:focus { background: var(--lcd-0); color: var(--lcd-3); }
+  h1 { font-size: clamp(1rem, 3vw, 1.8rem); line-height: 1.5; margin: 28px 0 8px; }
+  .subtitle { font-size: 1.25rem; margin: 0 0 25px; }
+  .tools { align-items: stretch; flex-wrap: wrap; margin-bottom: 22px; }
+  input, select { background: var(--lcd-3); color: var(--lcd-0); border: 2px solid var(--lcd-0); padding: 11px; min-height: 42px; }
+  input { flex: 1 1 280px; font-family: var(--mono); font-size: 1.3rem; }
+  select { flex: 0 1 230px; font-size: .55rem; }
+  .count { font-size: 1.25rem; white-space: nowrap; }
+  .table-wrap { overflow-x: auto; padding-bottom: 10px; }
+  .periodic-table { display: grid; grid-template-columns: repeat(18, minmax(52px, 1fr)); gap: 5px; min-width: 990px; }
+  .element { border: 2px solid var(--lcd-0); background: var(--lcd-2); color: var(--lcd-0); min-height: 66px; padding: 5px; text-align: left; cursor: pointer; transition: transform .12s, background .12s; }
+  .element:hover, .element:focus { background: var(--gold); transform: translateY(-3px); outline: 2px solid var(--lcd-0); outline-offset: 2px; }
+  .element .number { font-size: .9rem; }
+  .element .symbol { display: block; font-family: var(--pixel); font-size: 1rem; margin: 5px 0 3px; }
+  .element .name { font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .element.dimmed { opacity: .16; pointer-events: none; }
+  .detail { border-top: 3px solid var(--lcd-0); margin-top: 25px; padding-top: 20px; min-height: 100px; }
+  .detail h2 { font-size: .85rem; margin: 0 0 10px; }
+  .detail p { font-size: 1.3rem; margin: 4px 0; }
+  .hint { font-size: 1.05rem; margin-top: 20px; }
+  @media (max-width: 620px) { body { padding: 8px; } .topline { align-items: flex-start; flex-direction: column; } .screen { padding: 18px 14px; } .periodic-table { min-width: 900px; } }
+</style>
+</head>
+<body>
+<main class="pokedex-shell">
+  <div class="screen">
+    <div class="topline">
+      <div class="brand"><span class="led"></span>ARIEL RIVER // ELEMENT DEX</div>
+      <a class="back-link" href="index.html">&lt; BACK TO HOME</a>
+    </div>
+    <h1>POKÉMON POKÉDEX: ELEMENTS</h1>
+    <p class="subtitle">Scan the periodic table. Select an entry to inspect its elemental data.</p>
+    <div class="tools">
+      <input id="search" type="search" placeholder="SEARCH NAME OR SYMBOL..." aria-label="Search elements">
+      <select id="category" aria-label="Filter by category">
+        <option value="all">ALL TYPES</option>
+        <option value="nonmetal">NONMETALS</option>
+        <option value="noble-gas">NOBLE GASES</option>
+        <option value="alkali-metal">ALKALI METALS</option>
+        <option value="alkaline-earth">ALKALINE EARTH</option>
+        <option value="metalloid">METALLOIDS</option>
+        <option value="halogen">HALOGENS</option>
+        <option value="transition-metal">TRANSITION METALS</option>
+        <option value="post-transition-metal">POST-TRANSITION</option>
+        <option value="lanthanide">LANTHANIDES</option>
+        <option value="actinide">ACTINIDES</option>
+      </select>
+      <span class="count" id="count">118 / 118</span>
+    </div>
+    <div class="table-wrap"><div class="periodic-table" id="table"></div></div>
+    <div class="detail" id="detail"><h2>SELECT AN ELEMENT</h2><p>Choose a tile to load its Pokédex entry.</p></div>
+    <p class="hint">TIP: SEARCH “Fe”, “gold”, or any atomic number.</p>
+  </div>
+</main>
+<script>
+(function () {
+  var raw = 'H|Hydrogen|nonmetal|1|1;He|Helium|noble-gas|1|18;Li|Lithium|alkali-metal|2|1;Be|Beryllium|alkaline-earth|2|2;B|Boron|metalloid|2|13;C|Carbon|nonmetal|2|14;N|Nitrogen|nonmetal|2|15;O|Oxygen|nonmetal|2|16;F|Fluorine|halogen|2|17;Ne|Neon|noble-gas|2|18;Na|Sodium|alkali-metal|3|1;Mg|Magnesium|alkaline-earth|3|2;Al|Aluminium|post-transition-metal|3|13;Si|Silicon|metalloid|3|14;P|Phosphorus|nonmetal|3|15;S|Sulfur|nonmetal|3|16;Cl|Chlorine|halogen|3|17;Ar|Argon|noble-gas|3|18;K|Potassium|alkali-metal|4|1;Ca|Calcium|alkaline-earth|4|2;Sc|Scandium|transition-metal|4|3;Ti|Titanium|transition-metal|4|4;V|Vanadium|transition-metal|4|5;Cr|Chromium|transition-metal|4|6;Mn|Manganese|transition-metal|4|7;Fe|Iron|transition-metal|4|8;Co|Cobalt|transition-metal|4|9;Ni|Nickel|transition-metal|4|10;Cu|Copper|transition-metal|4|11;Zn|Zinc|transition-metal|4|12;Ga|Gallium|post-transition-metal|4|13;Ge|Germanium|metalloid|4|14;As|Arsenic|metalloid|4|15;Se|Selenium|nonmetal|4|16;Br|Bromine|halogen|4|17;Kr|Krypton|noble-gas|4|18;Rb|Rubidium|alkali-metal|5|1;Sr|Strontium|alkaline-earth|5|2;Y|Yttrium|transition-metal|5|3;Zr|Zirconium|transition-metal|5|4;Nb|Niobium|transition-metal|5|5;Mo|Molybdenum|transition-metal|5|6;Tc|Technetium|transition-metal|5|7;Ru|Ruthenium|transition-metal|5|8;Rh|Rhodium|transition-metal|5|9;Pd|Palladium|transition-metal|5|10;Ag|Silver|transition-metal|5|11;Cd|Cadmium|transition-metal|5|12;In|Indium|post-transition-metal|5|13;Sn|Tin|post-transition-metal|5|14;Sb|Antimony|metalloid|5|15;Te|Tellurium|metalloid|5|16;I|Iodine|halogen|5|17;Xe|Xenon|noble-gas|5|18;Cs|Caesium|alkali-metal|6|1;Ba|Barium|alkaline-earth|6|2;La|Lanthanum|lanthanide|6|3;Hf|Hafnium|transition-metal|6|4;Ta|Tantalum|transition-metal|6|5;W|Tungsten|transition-metal|6|6;Re|Rhenium|transition-metal|6|7;Os|Osmium|transition-metal|6|8;Ir|Iridium|transition-metal|6|9;Pt|Platinum|transition-metal|6|10;Au|Gold|transition-metal|6|11;Hg|Mercury|transition-metal|6|12;Tl|Thallium|post-transition-metal|6|13;Pb|Lead|post-transition-metal|6|14;Bi|Bismuth|post-transition-metal|6|15;Po|Polonium|post-transition-metal|6|16;At|Astatine|halogen|6|17;Rn|Radon|noble-gas|6|18;Fr|Francium|alkali-metal|7|1;Ra|Radium|alkaline-earth|7|2;Ac|Actinium|actinide|7|3;Rf|Rutherfordium|transition-metal|7|4;Db|Dubnium|transition-metal|7|5;Sg|Seaborgium|transition-metal|7|6;Bh|Bohrium|transition-metal|7|7;Hs|Hassium|transition-metal|7|8;Mt|Meitnerium|transition-metal|7|9;Ds|Darmstadtium|transition-metal|7|10;Rg|Roentgenium|transition-metal|7|11;Cn|Copernicium|transition-metal|7|12;Nh|Nihonium|post-transition-metal|7|13;Fl|Flerovium|post-transition-metal|7|14;Mc|Moscovium|post-transition-metal|7|15;Lv|Livermorium|post-transition-metal|7|16;Ts|Tennessine|halogen|7|17;Og|Oganesson|noble-gas|7|18;Ce|Cerium|lanthanide|8|4;Pr|Praseodymium|lanthanide|8|5;Nd|Neodymium|lanthanide|8|6;Pm|Promethium|lanthanide|8|7;Sm|Samarium|lanthanide|8|8;Eu|Europium|lanthanide|8|9;Gd|Gadolinium|lanthanide|8|10;Tb|Terbium|lanthanide|8|11;Dy|Dysprosium|lanthanide|8|12;Ho|Holmium|lanthanide|8|13;Er|Erbium|lanthanide|8|14;Tm|Thulium|lanthanide|8|15;Yb|Ytterbium|lanthanide|8|16;Lu|Lutetium|lanthanide|8|17;Th|Thorium|actinide|9|4;Pa|Protactinium|actinide|9|5;U|Uranium|actinide|9|6;Np|Neptunium|actinide|9|7;Pu|Plutonium|actinide|9|8;Am|Americium|actinide|9|9;Cm|Curium|actinide|9|10;Bk|Berkelium|actinide|9|11;Cf|Californium|actinide|9|12;Es|Einsteinium|actinide|9|13;Fm|Fermium|actinide|9|14;Md|Mendelevium|actinide|9|15;No|Nobelium|actinide|9|16;Lr|Lawrencium|actinide|9|17';
+  var elements = raw.split(';').map(function (entry, index) { var parts = entry.split('|'); return { symbol: parts[0], name: parts[1], category: parts[2], row: parts[3], group: parts[4], number: index + 1 }; });
+  var table = document.getElementById('table'), search = document.getElementById('search'), category = document.getElementById('category'), count = document.getElementById('count'), detail = document.getElementById('detail');
+  function render() {
+    var query = search.value.toLowerCase().trim(), type = category.value, visible = 0;
+    table.innerHTML = '';
+    elements.forEach(function (element) {
+      var matches = (!query || element.name.toLowerCase().indexOf(query) > -1 || element.symbol.toLowerCase().indexOf(query) > -1 || String(element.number) === query) && (type === 'all' || element.category === type);
+      if (matches) visible++;
+      var tile = document.createElement('button'); tile.className = 'element' + (matches ? '' : ' dimmed'); tile.style.gridRow = element.row; tile.style.gridColumn = element.group; tile.setAttribute('aria-label', element.number + ' ' + element.name);
+      tile.innerHTML = '<span class="number">' + element.number + '</span><span class="symbol">' + element.symbol + '</span>';
+      tile.addEventListener('click', function () { detail.innerHTML = '<h2>#' + element.number + ' ' + element.name.toUpperCase() + ' (' + element.symbol + ')</h2><p>TYPE: ' + element.category.replace(/-/g, ' ').toUpperCase() + ' &nbsp; // &nbsp; PERIOD: ' + (element.row > 7 ? element.row - 2 : element.row) + ' &nbsp; // &nbsp; GROUP: ' + element.group + '</p>'; });
+      table.appendChild(tile);
+    });
+    count.textContent = visible + ' / 118';
+  }
+  search.addEventListener('input', render); category.addEventListener('change', render); render();
+})();
+</script>
+</body>
+</html>
