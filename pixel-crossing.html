@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Crossing | Ariel River</title>
+<style>
+  :root {
+    --ink: #17202a;
+    --cream: #f6e9c8;
+    --grass: #82b44b;
+    --road: #454b59;
+    --yellow: #f3c84b;
+    --red: #d95f45;
+    --blue: #48a9c5;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { min-height: 100%; margin: 0; }
+
+  body {
+    background: #d8eef0;
+    color: var(--ink);
+    font-family: "Courier New", monospace;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+
+  .game-shell {
+    width: min(100%, 620px);
+    background: var(--cream);
+    border: 6px solid var(--ink);
+    box-shadow: 10px 10px 0 rgba(23, 32, 42, .18);
+    padding: clamp(16px, 4vw, 28px);
+  }
+
+  .topline, .scoreboard {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .topline { border-bottom: 3px solid var(--ink); padding-bottom: 14px; }
+  .eyebrow { font-size: .7rem; font-weight: 700; letter-spacing: .12em; }
+  .back-link { color: var(--ink); font-weight: 700; font-size: .75rem; }
+  h1 { font-size: clamp(1.35rem, 5vw, 2rem); margin: 22px 0 8px; letter-spacing: .04em; }
+  .subtitle { margin: 0 0 18px; font-size: .9rem; }
+
+  .scoreboard {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    font-size: .78rem;
+    text-transform: uppercase;
+  }
+
+  .scoreboard strong { color: var(--yellow); font-size: 1.1rem; }
+
+  .canvas-frame {
+    background: var(--ink);
+    padding: 7px;
+    position: relative;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--grass);
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  .message {
+    min-height: 1.5em;
+    margin: 14px 0 8px;
+    text-align: center;
+    font-weight: 700;
+    font-size: .85rem;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    max-width: 260px;
+    margin: 0 auto;
+  }
+
+  button {
+    min-height: 44px;
+    border: 3px solid var(--ink);
+    background: var(--yellow);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 3px 0 var(--ink);
+    touch-action: manipulation;
+  }
+
+  button:active { transform: translateY(3px); box-shadow: none; }
+  .up { grid-column: 2; }
+  .left { grid-column: 1; grid-row: 2; }
+  .down { grid-column: 2; grid-row: 2; background: #d8a6c0; }
+  .right { grid-column: 3; grid-row: 2; }
+  .restart { width: 100%; margin-top: 12px; background: var(--blue); }
+
+  .instructions {
+    border-top: 2px dashed rgba(23, 32, 42, .45);
+    margin-top: 22px;
+    padding-top: 14px;
+    text-align: center;
+    font-size: .78rem;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 430px) {
+    body { padding: 10px; }
+    .game-shell { border-width: 4px; box-shadow: 6px 6px 0 rgba(23, 32, 42, .18); }
+    .topline { align-items: flex-start; flex-direction: column; gap: 8px; }
+    .scoreboard { font-size: .68rem; }
+  }
+</style>
+</head>
+<body>
+<main class="game-shell">
+  <div class="topline">
+    <div class="eyebrow">ARIEL RIVER // MINI ARCADE</div>
+    <a class="back-link" href="index.html">&lt; HOME</a>
+  </div>
+  <h1>PIXEL CROSSING</h1>
+  <p class="subtitle">Guide the chicken across the roads. Keep moving forward and dodge the traffic.</p>
+
+  <div class="scoreboard" aria-live="polite">
+    <span>Score <strong id="score">0</strong></span>
+    <span>Best <strong id="best">0</strong></span>
+    <span>Speed <strong id="speed">1</strong></span>
+  </div>
+
+  <div class="canvas-frame">
+    <canvas id="game" width="480" height="640" aria-label="Pixel Crossing game"></canvas>
+  </div>
+  <p class="message" id="message">Press W or Up to start crossing.</p>
+
+  <div class="controls" aria-label="Game controls">
+    <button class="up" data-move="up" aria-label="Move up">UP</button>
+    <button class="left" data-move="left" aria-label="Move left">LEFT</button>
+    <button class="down" data-move="down" aria-label="Move down">DOWN</button>
+    <button class="right" data-move="right" aria-label="Move right">RIGHT</button>
+  </div>
+  <button class="restart" id="restart">RESTART GAME</button>
+
+  <div class="instructions">W / UP: forward &nbsp; A / LEFT: left &nbsp; D / RIGHT: right<br>Reach the top, then keep going for a higher score.</div>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var scoreEl = document.getElementById('score');
+  var bestEl = document.getElementById('best');
+  var speedEl = document.getElementById('speed');
+  var messageEl = document.getElementById('message');
+  var width = canvas.width;
+  var height = canvas.height;
+  var tile = 40;
+  var columns = width / tile;
+  var rows = 12;
+  var rowStep = 40;
+  var best = Number(localStorage.getItem('pixel-crossing-best') || 0);
+  var score;
+  var player;
+  var lanes;
+  var aheadLanes;
+  var pastLanes;
+  var aheadBufferSize = 8;
+  var gameOver;
+  var started;
+  var cameraRow;
+  var cameraStartRow;
+  var cameraTarget;
+  var cameraBoost;
+  var nextForwardWorldRow;
+  var lastTime = 0;
+  var animationId;
+
+  bestEl.textContent = best;
+
+  function randomBetween(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function terrainForRow(row) {
+    // Infinite repeating sequence: road sections separated by exactly one safe row.
+    // The full cycle is 19 rows long (2+1 + 3+1 + 4+1 + 2+1 + 3+1),
+    // so every possible generated row is explicitly part of the pattern.
+    var roadSizes = [2, 3, 4, 2, 3];
+    var cycleLength = 0;
+    for (var i = 0; i < roadSizes.length; i += 1) cycleLength += roadSizes[i] + 1;
+
+    var position = ((row % cycleLength) + cycleLength) % cycleLength;
+    var cursor = 0;
+
+    for (var section = 0; section < roadSizes.length; section += 1) {
+      var roadRows = roadSizes[section];
+      if (position >= cursor && position < cursor + roadRows) {
+        return { road: true, lineBefore: position > cursor };
+      }
+
+      cursor += roadRows;
+      if (position === cursor) return { road: false, lineBefore: false };
+      cursor += 1;
+    }
+
+    // Unreachable, but keep a safe fallback.
+    return { road: true, lineBefore: false };
+  }
+
+  function makeLane(row, patternRow) {
+    var sourceRow = typeof patternRow === 'number' ? patternRow : row;
+    var terrain = terrainForRow(sourceRow);
+    var road = terrain.road;
+    var kind = road ? (sourceRow % 7 === 2 ? 'train' : 'road') : (sourceRow % 8 === 4 ? 'water' : 'grass');
+    var lane = { row: row, worldRow: sourceRow, road: road, lineBefore: terrain.lineBefore, kind: kind, cars: [], speed: (sourceRow % 2 ? 1 : -1) * (35 + score * 3) };
+    if (road) {
+      var carCount = kind === 'train' ? 1 : (sourceRow % 2 ? 2 : 3);
+      for (var i = 0; i < carCount; i += 1) {
+        lane.cars.push({
+          x: i * (width / carCount) + randomBetween(-20, 20),
+          width: kind === 'train' ? 170 : randomBetween(42, 70),
+          color: ['#d95f45', '#48a9c5', '#f3c84b'][i % 3]
+        });
+      }
+    } else if (kind === 'water') {
+      for (var log = 0; log < 3; log += 1) {
+        lane.cars.push({ x: log * (width / 3) + randomBetween(-35, 15), width: randomBetween(78, 120), color: '#9a603f' });
+      }
+    }
+    return lane;
+  }
+
+  function reset() {
+    score = 0;
+    lanes = [];
+    pastLanes = [];
+    for (var row = 0; row < rows; row += 1) lanes.push(makeLane(row, row));
+
+    // Keep real generated lanes above row 0 so the camera never exposes
+    // the plain background as the player advances.
+    aheadLanes = [];
+    nextForwardWorldRow = -1;
+    for (var ahead = 1; ahead <= aheadBufferSize; ahead += 1) {
+      aheadLanes.push(makeLane(-ahead, nextForwardWorldRow));
+      nextForwardWorldRow -= 1;
+    }
+
+    var startRow = rows - 1;
+    while (startRow > 0 && lanes[startRow].road) startRow -= 1;
+    player = { x: Math.floor(columns / 2), row: startRow };
+    cameraRow = player.row;
+    cameraStartRow = player.row;
+    cameraTarget = player.row;
+    cameraBoost = 0;
+    gameOver = false;
+    started = false;
+    messageEl.textContent = 'Press W or Up to start crossing.';
+    updateHud();
+    draw();
+  }
+
+  function updateHud() {
+    scoreEl.textContent = score;
+    speedEl.textContent = Math.min(9, 1 + Math.floor(score / 3));
+    if (score > best) {
+      best = score;
+      bestEl.textContent = best;
+      localStorage.setItem('pixel-crossing-best', best);
+    }
+  }
+
+  function relabelLanes() {
+    lanes.forEach(function (lane, index) { lane.row = index; });
+
+    // Keep previously crossed lanes directly below the active grid. They are
+    // never regenerated, so moving back reveals the exact roads you crossed.
+    pastLanes.forEach(function (lane, index) {
+      lane.row = rows + (pastLanes.length - 1 - index);
+    });
+  }
+
+  function relabelAheadLanes() {
+    aheadLanes.forEach(function (lane, index) {
+      lane.row = -(index + 1);
+    });
+  }
+
+  function scrollWorld(direction) {
+    if (direction === 'forward') {
+      // Bring the nearest generated lane into view.
+      var incoming = aheadLanes.shift();
+      incoming.row = 0;
+      lanes.unshift(incoming);
+
+      // IMPORTANT: do not delete the lane that leaves the bottom. Preserve it
+      // in world history so it can be drawn/revisited later.
+      var outgoing = lanes.pop();
+      pastLanes.push(outgoing);
+
+      player.row += 1;
+      relabelLanes();
+
+      // Compensate for the row-index jump, then let update() ease the camera
+      // back to its target for the same smooth motion used at the start.
+      cameraRow += 1;
+
+      // Keep generating new terrain forever ahead of the player.
+      relabelAheadLanes();
+      aheadLanes.push(makeLane(-aheadBufferSize, nextForwardWorldRow));
+      nextForwardWorldRow -= 1;
+    } else if (pastLanes.length) {
+      // Restore the most recently crossed lane instead of creating a new one.
+      var restored = pastLanes.pop();
+      restored.row = rows - 1;
+      lanes.push(restored);
+
+      // The lane leaving the top is still part of the world, so put it back
+      // into the ahead buffer rather than discarding it.
+      var returnedAhead = lanes.shift();
+      aheadLanes.unshift(returnedAhead);
+
+      player.row -= 1;
+      relabelLanes();
+      relabelAheadLanes();
+
+      // Opposite compensation for smooth backward camera movement.
+      cameraRow -= 1;
+    }
+  }
+
+  function move(direction) {
+    if (gameOver) return;
+    started = true;
+    if (direction === 'left') player.x = Math.max(0, player.x - 1);
+    if (direction === 'right') player.x = Math.min(columns - 1, player.x + 1);
+    if (direction === 'up') {
+      player.row = Math.max(0, player.row - 1);
+
+      // Once the chicken reaches the upper part of the screen, keep it there
+      // and move the world underneath it. This makes the run effectively infinite.
+      if (player.row <= 4) {
+        scrollWorld('forward');
+      }
+
+      cameraTarget = player.row;
+      cameraBoost = Math.max(cameraBoost, 0.004);
+      score += 1;
+      messageEl.textContent = 'Nice crossing. Keep going!';
+      updateHud();
+    }
+    if (direction === 'down') {
+      player.row = Math.min(rows - 1, player.row + 1);
+
+      // If the player moves toward the bottom and there is saved world behind
+      // them, scroll backward through that exact history instead of losing it.
+      if (player.row >= 7 && pastLanes.length) {
+        scrollWorld('backward');
+      }
+
+      cameraTarget = player.row;
+      cameraBoost = Math.max(cameraBoost, 0.004);
+    }
+    checkCollision();
+    draw();
+  }
+
+  function checkCollision() {
+    var lane = lanes[player.row];
+    if (!lane || !lane.road) return;
+    var scale = depthForRow(player.row);
+    var playerWorldX = width / 2 + (player.x - columns / 2) * tile;
+    var playerCenter = projectWorld(player.row, playerWorldX).x;
+    var playerHalfWidth = tile * scale * 0.34;
+    var playerLeft = playerCenter - playerHalfWidth;
+    var playerRight = playerCenter + playerHalfWidth;
+    lane.cars.forEach(function (car) {
+      var carWorldX = width / 2 + (car.x + car.width / 2 - width / 2);
+      var carCenter = projectWorld(player.row, carWorldX).x;
+      var carWidth = car.width * scale;
+      var carInset = Math.min(4 * scale, carWidth * 0.05);
+      var carLeft = carCenter - carWidth / 2 + carInset;
+      var carRight = carCenter + carWidth / 2 - carInset;
+      if (playerRight > carLeft && playerLeft < carRight) endGame();
+    });
+  }
+
+  function endGame() {
+    if (gameOver) return;
+    gameOver = true;
+    messageEl.textContent = 'CRASHED! Press Restart or move to try again.';
+    draw();
+  }
+
+  function update(delta) {
+    if (!started || gameOver) return;
+    // Follow the chicken only when it changes rows.
+    // cameraTarget is updated in move(), so do not drift it every frame.
+    cameraRow += (cameraTarget - cameraRow) * Math.min(1, delta * 0.01);
+    lanes.concat(aheadLanes, pastLanes).forEach(function (lane) {
+      if (!lane.road) return;
+      lane.cars.forEach(function (car) {
+        car.x += lane.speed * delta / 1000;
+        if (lane.speed > 0 && car.x > width + 20) car.x = -car.width - 20;
+        if (lane.speed < 0 && car.x + car.width < -20) car.x = width + 20;
+      });
+    });
+    checkCollision();
+  }
+
+  function depthForRow(row) {
+    return 0.92 + (row / (rows - 1)) * 0.12;
+  }
+
+  function yForRow(row) {
+    return -80 + row * rowStep;
+  }
+
+  function centerForRow(row) {
+    var cameraShear = 0.17;
+    var perpendicularStep = rowStep * cameraShear / (1 + cameraShear * cameraShear);
+    return width / 2 + 48 - row * perpendicularStep;
+  }
+
+  function projectWorld(row, laneX) {
+    var scale = depthForRow(row);
+    return {
+      x: centerForRow(row) + (laneX - width / 2) * scale,
+      y: yForRow(row)
+    };
+  }
+
+  function drawGround() {
+    ctx.fillStyle = '#6e9f43';
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = 'rgba(255, 255, 255, .08)';
+    ctx.fillRect(0, 0, width, 4);
+  }
+
+  function drawLane(lane, skipVehicles) {
+    var row = lane.row;
+    var nextRow = row + 1;
+    var y = yForRow(row);
+    var nextY = yForRow(nextRow);
+    var center = centerForRow(row);
+    var nextCenter = centerForRow(nextRow);
+    var scale = depthForRow(row);
+    var nextScale = depthForRow(nextRow);
+    var topHalf = width * 0.72;
+    var bottomHalf = width * 0.72;
+    var topY = y;
+    var bottomY = nextY + 3;
+
+    ctx.fillStyle = lane.kind === 'water' ? '#43b9dc' : (lane.road ? '#454b59' : (row % 2 ? '#82b44b' : '#8dbc52'));
+    ctx.beginPath();
+    ctx.moveTo(center - topHalf, topY);
+    ctx.lineTo(center + topHalf, topY);
+    ctx.lineTo(nextCenter + bottomHalf, bottomY);
+    ctx.lineTo(nextCenter - bottomHalf, bottomY);
+    ctx.closePath();
+    ctx.fill();
+
+    if (lane.kind === 'train') {
+      drawRoadDivider(lane, topY, center, scale);
+      if (!skipVehicles) lane.cars.forEach(function (train) { drawTrain(train, y, scale, row); });
+    } else if (lane.road) {
+      drawRoadDivider(lane, topY, center, scale);
+      if (!skipVehicles) lane.cars.forEach(function (car) { drawCar(car, y, scale, row); });
+    } else if (lane.kind === 'water') {
+      ctx.fillStyle = 'rgba(196, 239, 224, .42)';
+      for (var wave = -width; wave < width * 2; wave += 42) {
+        var waveX = center + wave * scale;
+        ctx.fillRect(waveX, topY + (bottomY - topY) * .5, 19 * scale, Math.max(2, 3 * scale));
+      }
+      lane.cars.forEach(function (log) { drawLog(log, y, scale, row); });
+    } else {
+      ctx.fillStyle = 'rgba(23, 32, 42, .16)';
+      for (var grass = -width; grass < width * 2; grass += 36) {
+        var grassX = center + grass * scale;
+        ctx.fillRect(grassX, topY + 9 * scale, Math.max(2, 4 * scale), 18 * scale);
+      }
+      for (var tree = 0; tree < 3; tree += 1) {
+        drawTree(center + (tree * 150 - 110) * scale, y + 13 * scale, scale * .8);
+      }
+    }
+  }
+
+  function drawRoadDivider(lane, topY, center, scale) {
+    if (!lane.lineBefore) return;
+    ctx.fillStyle = '#f3c84b';
+    for (var mark = -width; mark < width * 2; mark += 54) {
+      var markLeft = center + mark * scale;
+      ctx.fillRect(markLeft, topY + 2 * scale, 25 * scale, Math.max(2, 4 * scale));
+    }
+  }
+
+  function projectedDepthForX(x) {
+    return x * 0.17;
+  }
+
+  function drawRowObjects(lane) {
+    var row = lane.row;
+    var y = yForRow(row);
+    var scale = depthForRow(row);
+    var playerWorldX = width / 2 + (player.x - columns / 2) * tile;
+    var playerDepth = projectedDepthForX(projectWorld(player.row, playerWorldX).x);
+    var objects = lane.cars.map(function (car) {
+      var carWorldX = width / 2 + (car.x + car.width / 2 - width / 2);
+      return { car: car, depth: projectedDepthForX(projectWorld(row, carWorldX).x) };
+    });
+    function drawVehicle(item) {
+      if (lane.kind === 'train') drawTrain(item.car, y, scale, lane.row);
+      else drawCar(item.car, y, scale, lane.row);
+    }
+    objects.sort(function (a, b) { return a.depth - b.depth; });
+    objects.forEach(function (item) {
+      if (item.depth <= playerDepth) drawVehicle(item);
+    });
+    drawPlayer();
+    objects.forEach(function (item) {
+      if (item.depth > playerDepth) drawVehicle(item);
+    });
+  }
+
+  function drawCar(car, y, scale, row) {
+    var carWidth = car.width * scale;
+    var carHeight = 22 * scale;
+    var carWorldX = width / 2 + (car.x + car.width / 2 - width / 2);
+    var projected = projectWorld(row, carWorldX);
+    var x = projected.x - carWidth / 2;
+    var baseY = y + 19 * scale;
+    var wheelSize = Math.max(4, 8 * scale);
+    var paint = car.color === '#d95f45' ? { front: '#d95f45', top: '#f07b59', side: '#a33d3a', light: '#f8a06b' } :
+      (car.color === '#48a9c5' ? { front: '#48a9c5', top: '#79d3df', side: '#2d728f', light: '#a5e5e8' } :
+      { front: '#f3c84b', top: '#ffe17a', side: '#b58b2d', light: '#fff0a6' });
+    ctx.fillStyle = 'rgba(23, 32, 42, .35)';
+    ctx.fillRect(x - 3 * scale, baseY + 3 * scale, carWidth + 8 * scale, 6 * scale);
+    drawCuboid(x, baseY, carWidth, carHeight, 8 * scale, paint.front, paint.top, paint.side);
+    var cabX = x + carWidth * .23;
+    var cabWidth = carWidth * .53;
+    var cabHeight = carHeight * .62;
+    var cabBaseY = baseY - carHeight;
+    drawCuboid(cabX, cabBaseY, cabWidth, cabHeight, 6 * scale, paint.front, paint.light, paint.side);
+    ctx.fillStyle = '#17202a';
+    ctx.fillRect(cabX + cabWidth * .14, cabBaseY - cabHeight * .65, cabWidth * .72, cabHeight * .38);
+    ctx.fillStyle = '#f6e9c8';
+    ctx.fillRect(x + carWidth * .12, baseY - carHeight * .36, Math.max(3, 6 * scale), Math.max(3, 5 * scale));
+    ctx.fillRect(x + carWidth * .82, baseY - carHeight * .36, Math.max(3, 6 * scale), Math.max(3, 5 * scale));
+    ctx.fillStyle = paint.side;
+    ctx.fillRect(x + carWidth * .42, baseY - carHeight * .08, carWidth * .16, Math.max(2, 3 * scale));
+    ctx.fillStyle = '#17202a';
+    ctx.fillRect(x + carWidth * .15, baseY - wheelSize * .2, wheelSize, wheelSize);
+    ctx.fillRect(x + carWidth * .76, baseY - wheelSize * .2, wheelSize, wheelSize);
+  }
+
+  function drawCuboid(x, baseY, cuboidWidth, cuboidHeight, depth, front, top, side) {
+    var topY = baseY - cuboidHeight;
+    ctx.fillStyle = top;
+    ctx.beginPath();
+    ctx.moveTo(x, topY);
+    ctx.lineTo(x + depth, topY - depth * .65);
+    ctx.lineTo(x + cuboidWidth + depth, topY - depth * .65);
+    ctx.lineTo(x + cuboidWidth, topY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = front;
+    ctx.fillRect(x, topY, cuboidWidth, cuboidHeight);
+    ctx.fillStyle = side;
+    ctx.beginPath();
+    ctx.moveTo(x + cuboidWidth, topY);
+    ctx.lineTo(x + cuboidWidth + depth, topY - depth * .65);
+    ctx.lineTo(x + cuboidWidth + depth, baseY - depth * .65);
+    ctx.lineTo(x + cuboidWidth, baseY);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawRailroad(topY, bottomY, scale, topHalf, bottomHalf, topCenter, bottomCenter) {
+    var topLeft = topCenter - topHalf;
+    var bottomLeft = bottomCenter - bottomHalf;
+    ctx.fillStyle = '#8b8f98';
+    ctx.fillRect(topLeft, topY + 4 * scale, topHalf * 2, Math.max(2, 3 * scale));
+    ctx.fillRect(bottomLeft, bottomY - 5 * scale, bottomHalf * 2, Math.max(2, 3 * scale));
+    ctx.fillStyle = '#85704d';
+    for (var tie = 0; tie < 4; tie += 1) {
+      var progress = tie / 3;
+      var tieX = topLeft + (bottomLeft - topLeft) * progress;
+      var tieWidth = topHalf * 2 + (bottomHalf * 2 - topHalf * 2) * progress;
+      var tieY = topY + (bottomY - topY) * progress;
+      ctx.fillRect(tieX, tieY + 2 * scale, tieWidth, Math.max(3, 3 * scale));
+    }
+  }
+
+  function drawTrain(train, y, scale, row) {
+    var trainWidth = train.width * scale;
+    var trainHeight = 24 * scale;
+    var trainWorldX = width / 2 + (train.x + train.width / 2 - width / 2);
+    var x = projectWorld(row, trainWorldX).x - trainWidth / 2;
+    var baseY = y + 20 * scale;
+    var wheelSize = Math.max(5, 9 * scale);
+    var cabX = x + trainWidth * .66;
+    var cabWidth = trainWidth * .26;
+    var cabHeight = trainHeight * .72;
+    ctx.fillStyle = 'rgba(23, 32, 42, .35)';
+    ctx.fillRect(x - 4 * scale, baseY + 3 * scale, trainWidth + 8 * scale, 7 * scale);
+    drawCuboid(x, baseY, trainWidth, trainHeight, 10 * scale, '#c84d42', '#ed7650', '#8f3638');
+    drawCuboid(cabX, baseY - trainHeight, cabWidth, cabHeight, 7 * scale, '#c84d42', '#ff9b67', '#8f3638');
+    ctx.fillStyle = '#17202a';
+    ctx.fillRect(cabX + cabWidth * .12, baseY - trainHeight - cabHeight * .66, cabWidth * .76, cabHeight * .36);
+    ctx.fillStyle = '#f6e9c8';
+    ctx.fillRect(cabX + cabWidth * .78, baseY - trainHeight * .32, Math.max(4, 7 * scale), Math.max(3, 5 * scale));
+    ctx.fillRect(cabX + cabWidth * .78, baseY - trainHeight * .1, Math.max(4, 7 * scale), Math.max(3, 5 * scale));
+    ctx.fillStyle = '#17202a';
+    ctx.fillRect(x + trainWidth * .14, baseY - wheelSize * .2, wheelSize, wheelSize);
+    ctx.fillRect(x + trainWidth * .47, baseY - wheelSize * .2, wheelSize, wheelSize);
+    ctx.fillRect(x + trainWidth * .8, baseY - wheelSize * .2, wheelSize, wheelSize);
+  }
+
+  function drawTree(x, y, scale) {
+    var trunk = 12 * scale;
+    var crown = 29 * scale;
+    ctx.fillStyle = 'rgba(23, 32, 42, .28)';
+    ctx.fillRect(x - crown * .65, y + 3 * scale, crown * 1.3, 6 * scale);
+    drawCuboid(x - trunk / 2, y + 4 * scale, trunk, 28 * scale, 5 * scale, '#765039', '#a3724b', '#54352e');
+    drawCuboid(x - crown / 2, y - 24 * scale, crown, 30 * scale, 10 * scale, '#2f7049', '#70b451', '#24553b');
+    drawCuboid(x - crown * .3, y - 48 * scale, crown * .6, 18 * scale, 7 * scale, '#4c9a4c', '#91c45b', '#347c44');
+  }
+
+  function drawLog(log, y, scale, row) {
+    var logWidth = log.width * scale;
+    var logHeight = 13 * scale;
+    var logWorldX = width / 2 + (log.x + log.width / 2 - width / 2);
+    var x = projectWorld(row, logWorldX).x - logWidth / 2;
+    var baseY = y + 13 * scale;
+    ctx.fillStyle = 'rgba(23, 32, 42, .25)';
+    ctx.fillRect(x - 3 * scale, baseY + 4 * scale, logWidth + 6 * scale, 5 * scale);
+    drawCuboid(x, baseY + logHeight / 2, logWidth, logHeight, 7 * scale, log.color, '#c27a4c', '#6d402f');
+    ctx.fillStyle = '#d89b5c';
+    ctx.fillRect(x + 5 * scale, baseY - logHeight * .28, 5 * scale, 5 * scale);
+    ctx.fillStyle = '#6d402f';
+    ctx.fillRect(x + logWidth - 10 * scale, baseY - logHeight * .28, 6 * scale, 5 * scale);
+  }
+
+  function drawPlayer() {
+    var scale = depthForRow(player.row);
+    var playerWorldX = width / 2 + (player.x - columns / 2) * tile;
+    var projected = projectWorld(player.row, playerWorldX);
+    var x = projected.x;
+    var worldY = projected.y + 16;
+    var cameraShift = getCameraShift();
+    var screenY = worldY + x * .17 - 85 + cameraShift;
+    var body = 32 * scale;
+    var head = 20 * scale;
+    var feather = gameOver ? '#8d5367' : '#f6e9c8';
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = 'rgba(23, 32, 42, .35)';
+    ctx.fillRect(x - body * .68, screenY + body * .72, body * 1.4, 7 * scale);
+
+    ctx.fillStyle = feather;
+    ctx.fillRect(x - body * .54, screenY - body * .05, body * .72, body * .68);
+    ctx.fillStyle = '#fff4d4';
+    ctx.beginPath();
+    ctx.moveTo(x - body * .54, screenY - body * .05);
+    ctx.lineTo(x - body * .36, screenY - body * .25);
+    ctx.lineTo(x + body * .36, screenY - body * .25);
+    ctx.lineTo(x + body * .18, screenY - body * .05);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#c8b995';
+    ctx.beginPath();
+    ctx.moveTo(x + body * .18, screenY - body * .05);
+    ctx.lineTo(x + body * .36, screenY - body * .25);
+    ctx.lineTo(x + body * .36, screenY + body * .43);
+    ctx.lineTo(x + body * .18, screenY + body * .63);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = feather;
+    ctx.fillRect(x + body * .02, screenY - body * .7, head, head);
+    ctx.fillStyle = '#fff4d4';
+    ctx.fillRect(x + body * .02, screenY - body * .7, head * .68, head * .22);
+    ctx.fillStyle = '#d95f45';
+    ctx.fillRect(x + body * .12, screenY - body * .9, head * .26, head * .32);
+    ctx.fillRect(x + body * .36, screenY - body * .94, head * .26, head * .38);
+    ctx.fillStyle = '#17202a';
+    ctx.fillRect(x + body * .45, screenY - body * .58, Math.max(3, 5 * scale), Math.max(3, 5 * scale));
+    ctx.fillStyle = '#f0a33b';
+    ctx.beginPath();
+    ctx.moveTo(x + body * .62, screenY - body * .45);
+    ctx.lineTo(x + body * 1.08, screenY - body * .3);
+    ctx.lineTo(x + body * .62, screenY - body * .14);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#c8b995';
+    ctx.fillRect(x - body * .3, screenY + body * .03, body * .24, body * .45);
+    ctx.fillStyle = '#d95f45';
+    ctx.fillRect(x - body * .46, screenY + body * .57, Math.max(4, 7 * scale), Math.max(3, 6 * scale));
+    ctx.fillRect(x - body * .03, screenY + body * .57, Math.max(4, 7 * scale), Math.max(3, 6 * scale));
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    // The base grass is only a backdrop. Keep it fixed in screen space so it
+    // can never move with the camera and look like it is covering old roads.
+    drawGround();
+
+    var cameraShift = getCameraShift();
+    ctx.setTransform(1, 0.17, 0, 1, 0, -85 + cameraShift);
+
+    // Draw generated rows ahead, the playable grid, and every preserved row
+    // behind the player. Old roads remain part of the world instead of vanishing.
+    aheadLanes.concat(lanes, pastLanes).slice().sort(function (a, b) { return a.row - b.row; }).forEach(function (lane) {
+      var isPlayerLane = lane.row === player.row && lane.row >= 0;
+      drawLane(lane, isPlayerLane);
+      if (isPlayerLane) {
+        if (lane.road) drawRowObjects(lane);
+        else drawPlayer();
+      }
+    });
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  function getCameraShift() {
+    // As the chicken moves toward smaller row numbers, shift the world down
+    // so the chicken stays in view. Do not wrap the shift with modulo.
+    return (cameraStartRow - cameraRow) * rowStep;
+  }
+
+  function frame(time) {
+    var delta = lastTime ? time - lastTime : 0;
+    lastTime = time;
+    update(delta);
+    draw();
+    animationId = requestAnimationFrame(frame);
+  }
+
+  document.addEventListener('keydown', function (event) {
+    var key = event.key.toLowerCase();
+    var moves = { w: 'up', arrowup: 'up', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', s: 'down', arrowdown: 'down' };
+    if (!moves[key]) return;
+    event.preventDefault();
+    move(moves[key]);
+  });
+
+  document.querySelectorAll('[data-move]').forEach(function (button) {
+    button.addEventListener('click', function () { move(button.getAttribute('data-move')); });
+  });
+
+  document.getElementById('restart').addEventListener('click', reset);
+
+  reset();
+  cancelAnimationFrame(animationId);
+  animationId = requestAnimationFrame(frame);
+}());
+</script>
+</body>
+</html>
