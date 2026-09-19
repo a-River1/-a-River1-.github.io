@@ -97,6 +97,8 @@ class ResearchSite:
         host = env.get("HTTP_HOST", "")
         allowed_hosts = {urlsplit(self.public_url).netloc} if self.public_url else {
             f"localhost:{self.port}", f"127.0.0.1:{self.port}"}
+        if self.public_url and path == "/api/discover" and method in ("GET", "HEAD"):
+            allowed_hosts.add("healthcheck.railway.app")
         allowed_origins = self.allowed_origins(cfg)
         # Only discovery can be read from file://. Research never accepts null origins.
         origin_parts = urlsplit(origin)

@@ -101,10 +101,7 @@ async function configuration() {
     serviceLocked = data.locked;
     csrfToken = data.csrf_token;
     $("provider-list").replaceChildren();
-    const selected = $("state").value;
-    $("state").replaceChildren(new Option("Federal / state unspecified", ""));
-    for (const [code, name] of Object.entries(data.states)) $("state").add(new Option(name, code));
-    $("state").value = selected;
+    // State options live in the HTML so static hosting and offline use work too.
     if (serviceLocked) {
       $("provider-list").append(node("p", "muted", "Workspace access required"));
       $("service-button").textContent = "Unlock workspace";

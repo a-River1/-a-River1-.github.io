@@ -23,6 +23,10 @@ Optional: OPENAI_MODEL overrides the default gpt-5.5. “Configured” only conf
 
 ## Publish one website address
 
+Railway deployment is also prepared in railway.json. Connect the Railway integration to let the assistant deploy to your hosting account. The deployment needs the four provider keys and a separately generated PARALEGAL_ACCESS_CODE stored as private server variables. Generate a public HTTPS domain and set PARALEGAL_PUBLIC_URL to that origin before starting the production service. Use one server instance because research jobs are held in process memory. Railway's healthcheck hostname is permitted only for its read-only discovery endpoint.
+
+No public deployment has been completed merely by creating these configuration files. After a successful deployment, update the portfolio's Paralegal link to the actual public URL, or configure the static frontend's backend origin as described below.
+
 The repository includes render.yaml for hosting the page and Python service together on Render. This is prepared but is not deployed automatically by editing these files.
 
 1. Push the app files to your GitHub repository. Never commit .env.
