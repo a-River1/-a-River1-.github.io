@@ -1,0 +1,8 @@
+# Local environment files can contain secrets
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.venv/
+.paralegal-test/

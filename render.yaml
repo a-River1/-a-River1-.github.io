@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: paralegal-research
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python paralegal_host.py --production
+    healthCheckPath: /api/discover
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: COURTLISTENER_API_KEY
+        sync: false
+      - key: GOVINFO_API_KEY
+        sync: false
+      - key: OPENSTATES_API_KEY
+        sync: false
+      - key: PARALEGAL_ACCESS_CODE
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.13.7

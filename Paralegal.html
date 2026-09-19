@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A source-first workspace for US legal research, annotated opinions, and claim summaries.">
+  <meta name="paralegal-api-base" content="">
+  <title>Paralegal | Research with context</title>
+  <link rel="stylesheet" href="paralegal.css">
+  <script src="paralegal.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="Paralegal.html"><span class="brand-mark" aria-hidden="true">§</span> Paralegal<span class="beta">BETA</span></a>
+    <p class="side-label">YOUR WORKSPACE</p>
+    <a class="nav-item active" href="#research"><span aria-hidden="true">⌕</span> Research desk</a>
+    <a class="nav-item" href="#results"><span aria-hidden="true">▤</span> Research packet</a>
+    <div class="sidebar-bottom">
+      <p class="side-label">RESEARCH SOURCES</p>
+      <div id="provider-list" class="provider-list"><p>Checking local configuration…</p></div>
+      <button id="refresh-config" class="text-button" type="button">Refresh configuration ↻</button>
+      <p class="small muted">Keys stay on your server.<br>Configuration does not verify API access.</p>
+      <div class="side-footer"><span class="tiny-dot"></span> Built for careful research</div>
+    </div>
+  </aside>
+
+  <main id="research">
+    <header class="topbar"><span>WORKSPACE <span class="slash">/</span> RESEARCH DESK</span><button id="service-button" class="connection-button" type="button">Connecting…</button></header>
+    <section class="intro">
+      <p class="eyebrow"><span class="tiny-dot"></span> FROM QUESTION TO SOURCE</p>
+      <h1>Build your case.<br><em>Start with the evidence.</em></h1>
+      <p class="intro-copy">Turn a legal question into a focused research packet.<br>Find relevant opinions, explore the law, and see why each source matters.</p>
+    </section>
+
+    <div id="setup" class="notice" role="status" hidden></div>
+    <dialog id="connection-dialog" aria-labelledby="connection-title">
+      <form id="connection-form">
+        <div class="dialog-heading"><h2 id="connection-title">Research connection</h2><button id="close-connection" type="button" class="secondary" aria-label="Close connection settings">Close</button></div>
+        <p class="muted">Connect to your research workspace. Your API keys stay on its server.</p>
+        <label for="service-url">Website address</label>
+        <input id="service-url" type="url" required placeholder="https://your-research-site.example">
+        <label for="access-code">Website access code <span class="optional">if required</span></label>
+        <input id="access-code" type="password" autocomplete="off" placeholder="The workspace access code, not an API key">
+        <p class="small muted">The code is kept only for this open tab. For local use, start “Start Paralegal.cmd” in this folder.</p>
+        <p id="connection-error" class="error" role="alert" hidden></p>
+        <button id="connect-submit" type="submit" class="primary">Connect to workspace <span aria-hidden="true">↗</span></button>
+      </form>
+    </dialog>
+    <div class="desk-grid">
+      <section class="intake panel" aria-labelledby="intake-title">
+        <div class="panel-heading"><div><p class="eyebrow">01 / THE MATTER</p><h2 id="intake-title">What are you researching?</h2></div><span class="paper-icon" aria-hidden="true">§</span></div>
+        <form id="research-form">
+          <label for="prompt">Describe the claim or legal question <span class="required">*</span></label>
+          <textarea id="prompt" name="prompt" rows="5" minlength="12" maxlength="8000" required placeholder="Describe what happened, the legal issue, and what you need to establish. For example: A tenant faces eviction after reporting unsafe conditions…"></textarea>
+          <div class="examples" aria-label="Example research prompts">
+            <span>Try a starting point</span>
+            <button type="button" data-example="housing">Housing + pro bono ↗</button>
+            <button type="button" data-example="employment">Workplace retaliation ↗</button>
+            <button type="button" data-example="counsel">Appointment of counsel ↗</button>
+          </div>
+          <div class="fields-row">
+            <div><label for="state">State / territory</label><select id="state" name="state"><option value="">Federal / state unspecified</option></select></div>
+            <div><label for="location">City, county, or court</label><input id="location" name="location" maxlength="160" placeholder="e.g. Queens County, NYC"></div>
+          </div>
+          <label for="context">Additional context <span class="optional">optional</span></label>
+          <textarea id="context" name="context" rows="3" maxlength="8000" placeholder="Relevant dates, procedural stage, facts to distinguish, or authorities you already know. Omit confidential details."></textarea>
+          <label class="check-row"><input id="pro-bono" type="checkbox"><span>Include pro bono and legal-aid resources<small>Research the underlying claim alongside help with representation.</small></span></label>
+          <div class="form-footer"><p>Submitted facts go to OpenAI. Search terms go to the legal data providers. This app does not save your research.</p><button id="submit" class="primary" type="submit">Build research packet <span aria-hidden="true">↗</span></button></div>
+        </form>
+      </section>
+
+      <aside class="guide">
+        <p class="eyebrow">A CLEARER RESEARCH TRAIL</p>
+        <h2>Every finding<br>needs a foundation.</h2>
+        <div class="guide-item"><span>01</span><div><h3>Find the authorities</h3><p>Case law, federal materials, state bills, and official web sources.</p></div></div>
+        <div class="guide-item"><span>02</span><div><h3>Read in context</h3><p>Source passages paired with annotations explaining relevance and limits.</p></div></div>
+        <div class="guide-item"><span>03</span><div><h3>Check the other side</h3><p>Adverse authority, jurisdiction questions, and facts still needed.</p></div></div>
+        <div class="guide-note"><span aria-hidden="true">↳</span><p>A source appearing in results does not establish that it is binding or still good law.</p></div>
+      </aside>
+    </div>
+
+    <section id="results" class="results" aria-labelledby="results-title">
+      <div class="results-heading"><div><p class="eyebrow">02 / THE RESEARCH</p><h2 id="results-title">Your research packet</h2></div><div class="export-actions"><button id="download" class="secondary" disabled>Download JSON ↓</button><button id="print" class="secondary" disabled>Print / save PDF</button></div></div>
+      <div id="progress" class="progress panel" role="status" hidden><div class="spinner" aria-hidden="true"></div><div><h3>Research in progress</h3><p id="progress-message">Identifying issues and searching the sources. This can take a few minutes.</p><p class="small muted">Keep this tab open. A request may incur API charges.</p></div></div>
+      <div id="error" class="error" role="alert" hidden></div>
+      <div id="empty" class="empty panel"><span class="empty-icon" aria-hidden="true">¶</span><h3>A question is a good place to start.</h3><p>Your summaries, sources, and annotated passages will appear here.<br>No sample results are presented as legal research.</p></div>
+      <div id="packet" hidden>
+        <div class="packet-meta"><span id="packet-date"></span><span id="packet-location"></span></div>
+        <div id="provider-results" class="provider-results"></div>
+        <div id="report-overview" class="panel report-overview"></div>
+        <div class="filter-row" aria-label="Filter sources">
+          <button type="button" class="filter active" data-filter="all" aria-pressed="true">All sources</button>
+          <button type="button" class="filter" data-filter="case" aria-pressed="false">Court opinions</button>
+          <button type="button" class="filter" data-filter="federal" aria-pressed="false">Federal materials</button>
+          <button type="button" class="filter" data-filter="bill" aria-pressed="false">State bills</button>
+          <button type="button" class="filter" data-filter="web" aria-pressed="false">Web research</button>
+          <span id="source-count"></span>
+        </div>
+        <div id="source-cards" class="source-cards"></div>
+        <div id="follow-up" class="follow-up"></div>
+        <details id="web-notes" class="panel web-notes" hidden><summary>Web research with inline citations</summary><div id="web-notes-body"></div></details>
+      </div>
+    </section>
+    <footer class="main-footer"><strong>Research, with judgment.</strong><p>AI research aid, not legal advice. Have a qualified attorney verify citations, jurisdiction, deadlines, and current legal status before relying on a result.</p></footer>
+  </main>
+</body>
+</html>
