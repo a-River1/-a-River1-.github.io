@@ -1,6 +1,7 @@
 # How API works:
 The point of the project is to used information form a variety of APIs to accomodate a specific legal request, whether an individual wants to know if he has grounds for something, or (more likely), in a paralegal sense, in that it collects informationf or a court case such as precedent.  The backend uses json modules to call the APIs in which OpenAI is responsible for translating back and forth (translating inputted and outputted information).  CourtListener searches a databank of court cases using specific key words from OpenAI API to find related and important information.  GovInfo and OpenStates do the same but for searching specifical U.S. federal codes and state codes.  For each API (excluding OpenAI), simply creating an account on their individual websites is enough to recieve an API key as it is immedietly offerd to you.
 
+To use the website, download each listed API, Python, put it in a .env file on a repo (after copying it from my repo), then use it.  The one on the website does not work because there was no more time to add a backend host to it.
 
 
 
