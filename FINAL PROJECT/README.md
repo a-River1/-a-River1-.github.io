@@ -17,6 +17,25 @@ Open **http://127.0.0.1:5000** in a browser. Enter the temporary workspace acces
 
 Enter the question, facts and location, then choose **Create research packet**. More fields cover legal services needed, desired outcome, parties, procedural stage, timeline, known deadlines, additional context, and up to five pasted documents. Results show cited findings, original-document links, verified passage quotations, missing information and provider errors.
 
+## Deploy on Render
+
+The dependency file is `requirements.txt` (plural). The project-level file includes `backend/requirements.txt` so both local and hosted installs use the same dependencies.
+
+For an existing Render Python Web Service, use these settings:
+
+| Setting | Value |
+| --- | --- |
+| Root Directory | `FINAL PROJECT` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `python backend/app.py` |
+| Health Check Path | `/api/health` |
+
+Keep the root at `FINAL PROJECT`, not `backend`, so Render includes the frontend too. Set `HOST=0.0.0.0` and a private `BACKEND_ACCESS_TOKEN` of at least 24 random characters. Add the four provider keys as private environment variables: `OPENAI_API_KEY`, `COURTLISTENER_API_KEY`, `GOVINFO_API_KEY`, `OPENSTATE_API_KEY` (or its supported alias `OPENSTATES_API_KEY`). Render supplies `PORT`. Do not upload or commit `.env`.
+
+For a new Blueprint, select `FINAL PROJECT/render.yaml` as the Blueprint Path. It sets these commands and generates the access token. For an existing manually configured service, update its settings explicitly; adding this YAML alone does not update that service. Push these files to GitHub before deploying. Do not use the old prototype's deployment configuration.
+
+After deployment, open the Render HTTPS address. Visitors need only a browser. The current app still asks for the workspace access token; visitor accounts have not been implemented. The free service may sleep; in-memory pending jobs are not durable across restarts. Saved completed packets remain in the visitor's browser.
+
 ## Saved research
 
 Drafts save automatically after typing pauses and when fields change. Packets and results are stored in IndexedDB in the user's browser on the same device and web origin. Reopening the website restores the most recently edited packet and the history list. Saved results can be read without connecting to the API. A new research run from an existing result creates a separate packet; the original submitted intake stays attached to each result.

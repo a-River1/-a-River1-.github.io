@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: paralegal-flask
+    runtime: python
+    plan: free
+    rootDir: FINAL PROJECT
+    buildCommand: pip install -r requirements.txt
+    startCommand: python backend/app.py
+    healthCheckPath: /api/health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: BACKEND_ACCESS_TOKEN
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: COURTLISTENER_API_KEY
+        sync: false
+      - key: GOVINFO_API_KEY
+        sync: false
+      - key: OPENSTATE_API_KEY
+        sync: false
