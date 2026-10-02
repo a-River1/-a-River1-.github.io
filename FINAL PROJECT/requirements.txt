@@ -1,2 +1,3 @@
 # Install the Flask backend dependencies from the project root on Render.
 -r backend/requirements.txt
+gunicorn
