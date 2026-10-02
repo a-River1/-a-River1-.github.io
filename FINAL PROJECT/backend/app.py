@@ -1,7 +1,6 @@
 """Flask JSON API. Start with python app.py; no legacy app imports."""
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
-import hmac
 import os
 from pathlib import Path
 import secrets
@@ -27,13 +26,8 @@ def settings():
 
 def create_app(config=None, researcher=None):
     cfg = settings() if config is None else dict(config)
-    token = cfg.get('BACKEND_ACCESS_TOKEN') or secrets.token_urlsafe(32)
-    if len(token) < 24:
-        raise ValueError('BACKEND_ACCESS_TOKEN must contain at least 24 characters.')
     app = Flask(__name__, static_folder=None)
     app.config.update(MAX_CONTENT_LENGTH=200_000)
-    app.extensions['access_token'] = token
-    app.extensions['token_generated'] = not cfg.get('BACKEND_ACCESS_TOKEN')
     pool = ThreadPoolExecutor(max_workers=2)
     jobs, submissions = OrderedDict(), []
     lock = threading.Lock()
@@ -51,9 +45,6 @@ def create_app(config=None, researcher=None):
             return '', 204
         if request.path == '/api/health' or (request.path in PUBLIC_FILES and request.method in ('GET', 'HEAD')):
             return None
-        supplied = request.headers.get('Authorization', '')
-        if not hmac.compare_digest(supplied.encode(), ('Bearer '+token).encode()):
-            return jsonify(error='unauthorized', message='Provide the backend access token.'), 401
 
     @app.after_request
     def headers(response):
@@ -62,7 +53,7 @@ def create_app(config=None, researcher=None):
         if origin in origins:
             response.headers['Access-Control-Allow-Origin'] = origin
             response.headers['Vary'] = 'Origin'
-            response.headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, OPTIONS'
         return response
 
@@ -166,11 +157,7 @@ if __name__ == '__main__':
     from waitress import serve
     config = settings()
     host = config.get('HOST', '127.0.0.1')
-    if host not in ('127.0.0.1','localhost','::1') and not config.get('BACKEND_ACCESS_TOKEN'):
-        raise SystemExit('Set BACKEND_ACCESS_TOKEN before exposing the server beyond localhost.')
     application = create_app(config)
-    if application.extensions['token_generated']:
-        print('Temporary local access token (not an API key): '+application.extensions['access_token'], flush=True)
     port = int(config.get('PORT') or 5000)
     print(f'Paralegal website: http://{host}:{port}/', flush=True)
     serve(application, host=host, port=port, threads=6)

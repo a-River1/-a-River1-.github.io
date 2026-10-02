@@ -10,7 +10,6 @@ from app import create_app
 from werkzeug.serving import make_server
 from playwright.sync_api import sync_playwright, expect
 
-TOKEN = 'browser-test-token-at-least-24-characters'
 release = threading.Event()
 calls = []
 
@@ -24,7 +23,7 @@ def researcher(intake, config):
                   'next_steps':['Verify jurisdiction'], 'limitations':['Synthetic test only']},
         'plan':{'issues':['Test issue'], 'missing_information':['Dates']}, 'providers':{'courtlistener':{'status':'ok'}}, 'warnings':[]}
 
-app = create_app({'BACKEND_ACCESS_TOKEN':TOKEN, 'OPENAI_API_KEY':'fake'}, researcher=researcher)
+app = create_app({'OPENAI_API_KEY':'fake'}, researcher=researcher)
 server = make_server('127.0.0.1', 0, app, threaded=True)
 threading.Thread(target=server.serve_forever,daemon=True).start()
 url = f'http://127.0.0.1:{server.server_port}'
@@ -53,17 +52,13 @@ try:
         page.goto(url)
         expect(page.locator('[name=title]')).to_have_value('Saved housing research')
         expect(page.locator('[data-key=text]')).to_have_value('Example lease text')
-        page.locator('#token').fill(TOKEN)
-        page.get_by_role('button',name='Connect',exact=True).click()
         expect(page.locator('#connection-status')).to_contain_text('Connected.')
         page.locator('#research').click()
         expect(page.locator('#packet-status')).to_contain_text('Research is running')
         page.reload()
         expect(page.locator('#packet-status')).to_contain_text('pending')
-        expect(page.locator('#token')).to_have_value('')
+        assert page.locator('#token').count() == 0
         release.set()
-        page.locator('#token').fill(TOKEN)
-        page.get_by_role('button',name='Connect',exact=True).click()
         expect(page.locator('#packet-status')).to_contain_text('Research completed', timeout=10000)
         expect(page.locator('#results blockquote')).to_have_text('Original source passage.')
         assert calls[0]['jurisdiction']['state']=='New York'
@@ -71,14 +66,14 @@ try:
         with page.expect_download() as download:
             page.locator('#export-packet').click()
         content=Path(download.value.path()).read_text()
-        assert TOKEN not in content
+        assert 'accessToken' not in content
         assert json.loads(content)['result']['sources'][0]['id']=='S1'
         context.close()
         context = pw.chromium.launch_persistent_context(profile, **options)
         page = context.pages[0]
         page.goto(url)
         expect(page.locator('#results blockquote')).to_have_text('Original source passage.')
-        expect(page.locator('#connection-status')).to_have_text('Not connected.')
+        expect(page.locator('#connection-status')).to_contain_text('Connected.')
         page.on('dialog',lambda dialog:dialog.accept())
         page.locator('#clear-history').click()
         expect(page.locator('#history')).to_contain_text('No saved packets')

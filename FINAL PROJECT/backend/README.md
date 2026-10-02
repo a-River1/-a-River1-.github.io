@@ -13,7 +13,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe app.py
 ```
 
-On macOS/Linux use `python3` and `.venv/bin/python`. Open the new website at http://127.0.0.1:5000; the health endpoint is `/api/health`. A temporary local access token is printed at startup. This is not a provider API key. It changes after restart unless BACKEND_ACCESS_TOKEN is configured.
+On macOS/Linux use `python3` and `.venv/bin/python`. Open the new website at http://127.0.0.1:5000; the health endpoint is `/api/health`. The frontend connects automatically. No access token is needed.
 
 Credentials are read from `FINAL PROJECT/.env`, then `backend/.env`, then environment variables (last wins). Existing credentials were copied privately from the prototype; neither implementation depends on the other's code. `.gitignore` excludes both files. Restart after changing configuration. Do not copy blank provider values over working parent values.
 
@@ -21,7 +21,7 @@ Supported names: OPENAI_API_KEY, COURTLISTENER_API_KEY, GOVINFO_API_KEY, OPENSTA
 
 ## API contract
 
-All endpoints except health require `Authorization: Bearer <backend access token>`. The frontend must request the token from the user, never embed it or API keys in public source. One token represents one trusted workspace; this is not a multi-user account system.
+The API is public and requires no access token. Provider keys remain server-side. Research job IDs are unguessable bearer references: anyone with a job ID can read or delete that job. There is no endpoint listing jobs. Keep packet exports private because they include job IDs and research content. This is not an account-based privacy system.
 
 | Method | Route | Result |
 | --- | --- | --- |
@@ -31,18 +31,21 @@ All endpoints except health require `Authorization: Bearer <backend access token
 | GET | /api/research/{job_id} | running, completed with result, or failed with error |
 | DELETE | /api/research/{job_id} | Delete a completed/failed research packet |
 
-See `example_request.json` for input. Required: question (12–4,000 characters), facts (20–16,000), jurisdiction object. Optional: state/city/county/court, legal area, desired outcome, parties, timeline, deadlines, procedural status, additional context, pro bono flag, and up to five pasted documents. Country must be US. State can be a full name or two-letter code. Unknown fields are rejected to catch frontend mistakes. Missing state is allowed for federal or uncertain jurisdiction and skips Open States. Uploaded PDFs/OCR are not implemented; documents currently contain a title and plain text.
+The website constructs this input automatically; a minimal API example is below. Required: question (12–4,000 characters), facts (20–16,000), jurisdiction object. Optional: state/city/county/court, legal area, desired outcome, parties, timeline, deadlines, procedural status, additional context, pro bono flag, and up to five pasted documents. Country must be US. State can be a full name or two-letter code. Unknown fields are rejected to catch frontend mistakes. Missing state is allowed for federal or uncertain jurisdiction and skips Open States. Uploaded PDFs/OCR are not implemented; documents currently contain a title and plain text.
 
-PowerShell example (enter the local token when prompted):
+PowerShell example:
 
 ```powershell
-$backendToken = Read-Host "Backend access token"
-$backendHeaders = @{ Authorization = "Bearer $backendToken" }
-$job = Invoke-RestMethod http://127.0.0.1:5000/api/research -Method Post -Headers $backendHeaders -ContentType application/json -Body (Get-Content example_request.json -Raw)
-Invoke-RestMethod ("http://127.0.0.1:5000" + $job.poll_url) -Headers $backendHeaders
+@{
+    question = "What authorities apply to a withheld security deposit?"
+    facts = "The landlord retained the deposit after the lease ended without an explanation."
+    jurisdiction = @{ country = "US"; state = "NY" }
+} | ConvertTo-Json | Set-Variable -Name researchBody
+$job = Invoke-RestMethod http://127.0.0.1:5000/api/research -Method Post -ContentType application/json -Body $researchBody
+Invoke-RestMethod ("http://127.0.0.1:5000" + $job.poll_url)
 ```
 
-Poll again until status is completed or failed. Input errors return 422; missing authentication 401; rejected browser origins 403; excessive payload 413; non-JSON input 415; busy/rate limit 429; missing OpenAI configuration 503. Worker failures return status=failed in the polling response. Health success does not prove API credit or provider availability.
+Poll again until status is completed or failed. Input errors return 422; rejected browser origins 403; excessive payload 413; non-JSON input 415; busy/rate limit 429; missing OpenAI configuration 503. Worker failures return status=failed in the polling response. Health success does not prove API credit or provider availability.
 
 ## Research results and annotations
 
@@ -56,7 +59,7 @@ These are annotated text excerpts linked to original documents, not modified PDF
 
 Intake and retrieved text are sent to OpenAI; derived search keywords go to the legal providers. Remove unnecessary confidential identifiers. The app requests `store:false` and does not log or save intake/results to disk, but provider policies still apply. Research normally uses two paid OpenAI calls. Jobs/results live in process memory and expire after 30 minutes; at most 20 packets are retained. Restarting loses them. Two jobs may run concurrently, with ten submissions per hour across this workspace.
 
-For hosting, set HOST=0.0.0.0, PORT, and a random BACKEND_ACCESS_TOKEN of at least 24 characters. The startup script rejects public binding without a configured token. Use HTTPS at the hosting proxy, one process/instance, `pip install -r requirements.txt`, and `python app.py`. Do not use Flask's debug server publicly. ALLOWED_ORIGINS accepts comma-separated exact frontend origins, with no wildcard. Configure per-user authentication, durable queues/storage, and per-account quotas before operating a multi-user public service. This implementation is a protected single-workspace backend.
+For hosting, set HOST=0.0.0.0 and PORT. BACKEND_ACCESS_TOKEN is no longer used and can be removed from hosting settings. Use HTTPS at the hosting proxy, one process/instance, `pip install -r requirements.txt`, and `python app.py`. Do not use Flask's debug server publicly. ALLOWED_ORIGINS accepts comma-separated exact frontend origins, with no wildcard. The service allows anonymous research under a shared process-local limit of two concurrent jobs and ten submissions per hour. These limits reset on restart and are not a guaranteed spending cap. Account-based privacy, durable jobs and distributed quotas are not implemented.
 
 ## Tests
 

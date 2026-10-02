@@ -10,8 +10,6 @@ services:
     envVars:
       - key: HOST
         value: 0.0.0.0
-      - key: BACKEND_ACCESS_TOKEN
-        generateValue: true
       - key: OPENAI_API_KEY
         sync: false
       - key: COURTLISTENER_API_KEY

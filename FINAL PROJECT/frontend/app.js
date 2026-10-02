@@ -1,10 +1,11 @@
 'use strict';
+const HOSTED_BACKEND = 'https://a-river1-github-io-4.onrender.com';
 const $ = (selector) => document.querySelector(selector);
 const form = $('#intake-form');
 const field = (name) => form.elements.namedItem(name);
 const fields = ['legal_area', 'question', 'facts', 'desired_outcome', 'procedural_status', 'additional_context'];
 const groups = ['timeline', 'deadlines', 'documents'];
-let database, packets = new Map(), active, accessToken = '', connectedOrigin = '', saveTimer;
+let database, packets = new Map(), active, connected = false, connectedOrigin = '', saveTimer;
 const polling = new Set();
 let storageAvailable = false;
 
@@ -117,7 +118,7 @@ function renderHistory() {
     const li = element('li', undefined, list);
     const open = element('button', `${packet.title} — ${packet.status}`, li);
     if (active?.id === packet.id) open.setAttribute('aria-current', 'true');
-    open.onclick = async () => { await saveCurrent(); selectPacket(packet); if (accessToken && packet.status === 'running') poll(packet); };
+    open.onclick = async () => { await saveCurrent(); selectPacket(packet); if (connected && packet.status === 'running') poll(packet); };
     element('small', new Date(packet.updated).toLocaleString() + ' ', li);
     const remove = element('button', 'Delete', li);
     remove.onclick = async () => {
@@ -204,7 +205,7 @@ function backendOrigin(value) {
 async function api(path, options = {}) {
   let response;
   try {
-    response = await fetch(connectedOrigin + path, { ...options, headers: { 'Authorization': 'Bearer ' + accessToken, ...(options.body ? { 'Content-Type': 'application/json' } : {}) }, signal: AbortSignal.timeout(30000) });
+    response = await fetch(connectedOrigin + path, { ...options, headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}) }, signal: AbortSignal.timeout(30000) });
   } catch { throw new Error('Cannot reach the backend. Check that Python is running and this frontend origin is allowed.'); }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -215,11 +216,11 @@ async function api(path, options = {}) {
   return data;
 }
 async function poll(packet) {
-  if (polling.has(packet.id) || !accessToken || packet.backend !== connectedOrigin || packet.status !== 'running') return;
+  if (polling.has(packet.id) || !connected || packet.backend !== connectedOrigin || packet.status !== 'running') return;
   polling.add(packet.id);
   const expectedOrigin = connectedOrigin;
   try {
-    while (packets.has(packet.id) && accessToken && connectedOrigin === expectedOrigin) {
+    while (packets.has(packet.id) && connected && connectedOrigin === expectedOrigin) {
       const data = await api('/api/research/' + encodeURIComponent(packet.jobId));
       if (!packets.has(packet.id)) break;
       if (data.status !== 'running') {
@@ -245,29 +246,26 @@ async function poll(packet) {
   } finally { polling.delete(packet.id); }
 }
 
-$('#connection-form').onsubmit = async event => {
-  event.preventDefault();
-  accessToken = ''; connectedOrigin = '';
+async function connect() {
+  connected = false; connectedOrigin = '';
   try {
-    const token = $('#token').value.trim();
-    if (token.startsWith('sk-')) throw new Error('That looks like a provider API key. Use the workspace access token from the Python terminal.');
     connectedOrigin = backendOrigin($('#backend-url').value.trim());
-    accessToken = token;
+    connected = true;
     const config = await api('/api/config');
     if (!config.providers || !config.states) throw new Error('This address is not the expected research backend.');
-    $('#token').value = '';
     $('#connection-status').textContent = 'Connected. ' + Object.entries(config.providers).map(([p, ready]) => `${p}: ${ready ? 'configured' : 'missing key'}`).join('; ');
     for (const packet of packets.values()) if (packet.status === 'running') poll(packet);
-  } catch (error) { accessToken = ''; $('#connection-status').textContent = error.message; }
+  } catch (error) { connected = false; $('#connection-status').textContent = error.message; }
 };
-$('#disconnect').onclick = () => { accessToken = ''; $('#token').value = ''; $('#connection-status').textContent = 'Disconnected. Saved packets remain available.'; };
+$('#connection-form').onsubmit = event => { event.preventDefault(); connect(); };
+$('#disconnect').onclick = () => { connected = false; $('#connection-status').textContent = 'Disconnected. Saved packets remain available.'; };
 form.oninput = () => { clearTimeout(saveTimer); saveTimer = setTimeout(saveCurrent, 350); };
 form.onchange = saveCurrent;
 document.querySelectorAll('[data-add]').forEach(button => { button.onclick = () => { addRow(button.dataset.add); saveCurrent(); }; });
 $('#save-draft').onclick = async () => { await saveCurrent(); message(storageAvailable ? 'Draft saved.' : 'Draft kept in this tab. Export it before closing.'); };
 $('#new-packet').onclick = async () => { await saveCurrent(); selectPacket(freshPacket()); await saveCurrent(); };
 $('#resume').onclick = () => {
-  if (!accessToken || active.backend !== connectedOrigin) { message('Connect to the backend used for this packet: ' + active.backend); return; }
+  if (!connected || active.backend !== connectedOrigin) { message('Connect to the backend used for this packet: ' + active.backend); return; }
   poll(active);
 };
 $('#clear-history').onclick = async () => {
@@ -286,7 +284,7 @@ $('#export-packet').onclick = async () => {
 };
 form.onsubmit = async event => {
   event.preventDefault();
-  if (!accessToken) { message('Connect to the research service first. You can save a draft without connecting.'); return; }
+  if (!connected) { message('Connect to the research service first. You can save a draft without connecting.'); return; }
   if (['running', 'submitting'].includes(active.status)) { message('This packet already has a running job. Create a new packet for another question.'); return; }
   $('#research').disabled = true;
   try {
@@ -324,7 +322,8 @@ async function init() {
   // Static options work before authentication or when the backend is offline.
   const names = 'Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|District of Columbia|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Puerto Rico|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming'.split('|');
   for (const name of names) { const option = element('option', name, field('state')); option.value = name; }
-  $('#backend-url').value = location.protocol === 'file:' ? 'http://127.0.0.1:5000' : location.origin;
+  const localPage = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  $('#backend-url').value = localPage ? location.origin : HOSTED_BACKEND;
   try {
     await openStorage(); storageAvailable = true;
     for (const packet of await storage('getAll')) {
@@ -335,6 +334,11 @@ async function init() {
     $('#storage-status').textContent = 'Local packet storage is ready.';
   } catch { storageError(); }
   selectPacket([...packets.values()].sort((a, b) => b.updated.localeCompare(a.updated))[0] || freshPacket());
-  if (location.protocol === 'file:') $('#connection-status').textContent = 'Start the Flask backend and open http://127.0.0.1:5000 to use this app. Opening the HTML as a file is not supported for API requests.';
+  if (location.protocol === 'file:') {
+    $('#connection-status').textContent = 'Open the hosted website to use the app: ';
+    safeLink($('#connection-status'), HOSTED_BACKEND, 'Open Paralegal');
+  } else {
+    connect();
+  }
 }
 init();

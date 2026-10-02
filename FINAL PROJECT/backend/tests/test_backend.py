@@ -7,8 +7,7 @@ from models import Intake, Plan, Report
 from providers import Providers, ProviderError, fetch, source
 from research import research, validate_report
 
-TOKEN = 'test-access-token-at-least-24-characters'
-CONFIG = {'BACKEND_ACCESS_TOKEN':TOKEN, 'OPENAI_API_KEY':'fake',
+CONFIG = {'OPENAI_API_KEY':'fake',
           'COURTLISTENER_API_KEY':'fake', 'GOVINFO_API_KEY':'fake', 'OPENSTATE_API_KEY':'fake',
           'ALLOWED_ORIGINS':'http://localhost:5173'}
 INTAKE = {'question':'What authority concerns return of a security deposit?',
@@ -22,7 +21,7 @@ class BackendTests(unittest.TestCase):
     def setUp(self):
         self.app = create_app(CONFIG, researcher=lambda i,c:{'sources':[], 'report':None})
         self.client = self.app.test_client()
-        self.auth = {'Authorization':'Bearer '+TOKEN}
+        self.auth = {}
     def tearDown(self):
         self.app.extensions['research_pool'].shutdown(wait=True)
     def test_health_is_public_and_minimal(self):
@@ -35,8 +34,8 @@ class BackendTests(unittest.TestCase):
                 self.assertEqual(response.status_code,200)
         for path in ['/../.env', '/frontend/../.env', '/backend/app.py']:
             self.assertNotEqual(self.client.get(path,headers=self.auth).status_code,200)
-    def test_authentication_and_private_files(self):
-        self.assertEqual(self.client.post('/api/research',json=INTAKE).status_code,401)
+    def test_public_research_and_private_files(self):
+        self.assertEqual(self.client.post('/api/research',json=INTAKE).status_code,202)
         for path in ['/.env','/app.py','/../.env']:
             self.assertEqual(self.client.get(path,headers=self.auth).status_code,404)
     def test_input_validation(self):
