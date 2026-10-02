@@ -1,0 +1,14 @@
+{
+  "question": "What authorities may support or undermine a claim for a withheld security deposit?",
+  "facts": "A tenant moved out after the lease ended. The landlord retained the entire deposit and has not provided an itemized explanation. The tenant has photographs and a copy of the lease.",
+  "jurisdiction": {"country": "US", "state": "NY", "city": "New York", "county": "", "court": ""},
+  "legal_area": "housing",
+  "desired_outcome": "Understand relevant authorities and information needed before pursuing the deposit.",
+  "parties": ["Tenant", "Landlord"],
+  "timeline": [],
+  "deadlines": [],
+  "procedural_status": "No case filed",
+  "additional_context": "Dates and lease details still need to be provided.",
+  "pro_bono": true,
+  "documents": []
+}

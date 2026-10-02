@@ -6,7 +6,7 @@
             "type": "process",
             "command": "python",
             "args": ["-B", "-u", "paralegal_server.py", "--port", "8000", "--reuse"],
-            "options": {"cwd": "${workspaceFolder}"},
+            "options": {"cwd": "${workspaceFolder}/FINAL PROJECT"},
             "isBackground": true,
             "runOptions": {"instanceLimit": 1},
             "presentation": {"reveal": "silent", "panel": "dedicated", "clear": true},

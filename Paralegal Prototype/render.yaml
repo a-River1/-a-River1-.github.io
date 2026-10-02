@@ -2,6 +2,7 @@ services:
   - type: web
     name: paralegal-research
     runtime: python
+    rootDir: FINAL PROJECT
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python paralegal_host.py --production

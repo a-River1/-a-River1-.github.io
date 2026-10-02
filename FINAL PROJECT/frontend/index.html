@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paralegal research workspace</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1>Paralegal research workspace</h1>
+    <p>Describe your legal question, gather sources, and save research packets.</p>
+    <p>U.S. research aid, not legal advice. Verify authorities and deadlines with an attorney.</p>
+  </header>
+  <main>
+    <section aria-labelledby="connection-heading">
+      <h2 id="connection-heading">Research service</h2>
+      <form id="connection-form">
+        <label>Backend address <input id="backend-url" type="url" required></label>
+        <label>Workspace access token <input id="token" type="password" required autocomplete="off"></label>
+        <p>Use the access token printed by the Python server. Do not enter an OpenAI or other provider API key. The token is kept only while this page is open.</p>
+        <button type="submit">Connect</button>
+        <button id="disconnect" type="button">Disconnect</button>
+      </form>
+      <p id="connection-status" role="status">Not connected.</p>
+    </section>
+    <section aria-labelledby="history-heading">
+      <h2 id="history-heading">Saved research packets</h2>
+      <p>Drafts and completed packets are saved automatically in this browser on this device, including the facts and documents you enter. They are not encrypted or synced to an account. Avoid saving sensitive details on a shared device. Private browsing or clearing site data can erase them; export important packets.</p>
+      <p id="storage-status" role="status">Opening local storage…</p>
+      <button id="new-packet" type="button">New packet</button>
+      <button id="clear-history" type="button">Delete all local history</button>
+      <ul id="history"></ul>
+    </section>
+    <section aria-labelledby="intake-heading">
+      <h2 id="intake-heading">Legal information</h2>
+      <form id="intake-form">
+        <label>Packet name <input name="title" maxlength="160" placeholder="For example: Security deposit research"></label>
+        <fieldset>
+          <legend>Location</legend>
+          <p>Country: United States</p>
+          <label>State or jurisdiction <select name="state"><option value="">Federal / not yet known</option></select></label>
+          <label>City <input name="city" maxlength="120"></label>
+          <label>County <input name="county" maxlength="120"></label>
+          <label>Court, if known <input name="court" maxlength="200"></label>
+        </fieldset>
+        <label>Legal area / services needed <input name="legal_area" maxlength="120" placeholder="Housing, employment, family, consumer protection…"></label>
+        <label>Legal question (required) <textarea name="question" required minlength="12" maxlength="4000" rows="3"></textarea></label>
+        <label>Facts and description of the issue (required) <textarea name="facts" required minlength="20" maxlength="16000" rows="6"></textarea></label>
+        <label>Desired outcome <textarea name="desired_outcome" maxlength="2000" rows="3"></textarea></label>
+        <label>Parties involved (one description per line, up to 20; names are optional) <textarea name="parties" rows="3" maxlength="6020"></textarea></label>
+        <label>Current stage / procedural status <input name="procedural_status" maxlength="2000" placeholder="No case filed, hearing scheduled, appeal…"></label>
+        <fieldset><legend>Timeline</legend><div id="timeline"></div><button type="button" data-add="timeline">Add event</button></fieldset>
+        <fieldset><legend>Known deadlines</legend><p>Record dates you already know. This app does not calculate legal deadlines.</p><div id="deadlines"></div><button type="button" data-add="deadlines">Add deadline</button></fieldset>
+        <fieldset><legend>Documents (optional)</legend><p>Paste plain text from up to five documents. PDF uploads are not supported yet.</p><div id="documents"></div><button type="button" data-add="documents">Add document</button></fieldset>
+        <label>Additional context <textarea name="additional_context" maxlength="8000" rows="3"></textarea></label>
+        <label><input name="pro_bono" type="checkbox"> Include pro bono / legal aid considerations</label>
+        <p>Research sends this intake to OpenAI and search terms to legal data providers. Research uses the configured API credits.</p>
+        <button id="research" type="submit">Create research packet</button>
+        <button id="save-draft" type="button">Save draft</button>
+      </form>
+      <p id="packet-status" role="status" aria-live="polite"></p>
+    </section>
+    <section aria-labelledby="results-heading">
+      <h2 id="results-heading">Research results</h2>
+      <p>Editing the form does not change these results. Run new research to create a separate packet for the revised intake.</p>
+      <button id="export-packet" type="button">Export current packet (JSON)</button>
+      <button id="resume" type="button" hidden>Check pending research</button>
+      <div id="results"><p>No research results yet.</p></div>
+    </section>
+  </main>
+</body>
+</html>

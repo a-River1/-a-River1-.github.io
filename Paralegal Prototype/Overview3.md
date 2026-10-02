@@ -18,6 +18,7 @@ Python 3.11+ is the only runtime requirement. No third-party packages are needed
    OPENAI_API_KEY, COURTLISTENER_API_KEY, GOVINFO_API_KEY, OPENSTATES_API_KEY.
 2. From this repository run:
 
+   cd "FINAL PROJECT"
    python paralegal_server.py
 
 3. Open http://localhost:8000/Paralegal.html.

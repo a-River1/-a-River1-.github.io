@@ -1,13 +1,16 @@
 # Paralegal website
 
+All Paralegal app files, the private `.env`, and the project overview and prompt log are in `FINAL PROJECT`. The portfolio stays in the repository's root `index.html`. Shared VS Code launch settings remain in the root `.vscode` folder and point here.
+
 ## Open it on this computer
 
-In VS Code, select **Paralegal website** in Run and Debug, then choose **Run Without Debugging** (Ctrl+F5). The launch task starts the Python backend on port 8000 and waits for it before opening Chrome. The task reuses an existing Paralegal server if one is already running.
+In VS Code, select **Paralegal research app** in Run and Debug, then choose **Run Without Debugging** (Ctrl+F5). The launch task starts the Python backend on port 8000 and waits for it before opening Chrome. The task reuses an existing Paralegal server if one is already running. After moving the project, stop any old server before launching again.
 
 Double-click **Start Paralegal.cmd**. It starts the research server and opens your browser. Leave its terminal window open while using the app. Close the window or press Ctrl+C to stop it.
 
-You can also run:
+From the repository root, you can also run:
 
+    cd "FINAL PROJECT"
     python paralegal_server.py --open
 
 The local website is http://localhost:8000/Paralegal.html. Once the server is running, opening Paralegal.html directly connects to it automatically. An HTML file cannot start Python on its own; if the server is stopped, the page tells you to use the launcher and checks again automatically.
@@ -22,6 +25,8 @@ The existing .env contains your API credentials. Keep it out of Git and browser 
 Optional: OPENAI_MODEL overrides the default gpt-5.5. “Configured” only confirms a nonempty key, not provider account access.
 
 ## Publish one website address
+
+Because the app is now in a subfolder, set the Railway service's **Root Directory** to `/FINAL PROJECT` and its config file path to `/FINAL PROJECT/railway.json`. For a Render Blueprint, select `FINAL PROJECT/render.yaml`; that file sets the service root directory. Run manual install/start commands from `FINAL PROJECT`.
 
 Railway deployment is also prepared in railway.json. Connect the Railway integration to let the assistant deploy to your hosting account. The deployment needs the four provider keys and a separately generated PARALEGAL_ACCESS_CODE stored as private server variables. Generate a public HTTPS domain and set PARALEGAL_PUBLIC_URL to that origin before starting the production service. Use one server instance because research jobs are held in process memory. Railway's healthcheck hostname is permitted only for its read-only discovery endpoint.
 

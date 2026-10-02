@@ -1,0 +1,11 @@
+/* Basic readable layout only; visual design can be added later. */
+body { font-family: system-ui, sans-serif; max-width: 960px; margin: 1.5rem auto; padding: 0 1rem; line-height: 1.5; }
+section { margin: 2rem 0; border-top: 1px solid #aaa; }
+label { display: block; margin: .75rem 0; }
+input:not([type=checkbox]), select, textarea { display: block; width: 100%; box-sizing: border-box; font: inherit; }
+button { font: inherit; margin: .25rem .25rem .25rem 0; cursor: pointer; }
+fieldset, article { margin: 1rem 0; padding: .75rem; }
+pre, blockquote { white-space: pre-wrap; overflow-wrap: anywhere; }
+li { margin: .5rem 0; }
+[role=status] { font-weight: 600; }
+:focus-visible { outline: 3px solid #1459ac; outline-offset: 2px; }

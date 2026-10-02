@@ -17,7 +17,7 @@
             "request": "launch",
             "name": "Paralegal research app",
             "url": "http://localhost:8000/Paralegal.html",
-            "webRoot": "${workspaceFolder}",
+            "webRoot": "${workspaceFolder}/FINAL PROJECT",
             "preLaunchTask": "Paralegal: start server"
         }
     ]
