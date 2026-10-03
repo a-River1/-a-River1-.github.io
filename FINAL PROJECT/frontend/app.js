@@ -118,7 +118,7 @@ function renderHistory() {
     const li = element('li', undefined, list);
     const open = element('button', `${packet.title} — ${packet.status}`, li);
     if (active?.id === packet.id) open.setAttribute('aria-current', 'true');
-    open.onclick = async () => { await saveCurrent(); selectPacket(packet); if (connected && packet.status === 'running') poll(packet); };
+    open.onclick = async () => { await saveCurrent(); selectPacket(packet); $('#history-dialog').close(); if (connected && packet.status === 'running') poll(packet); };
     element('small', new Date(packet.updated).toLocaleString() + ' ', li);
     const remove = element('button', 'Delete', li);
     remove.onclick = async () => {
@@ -151,14 +151,20 @@ function renderResults() {
   const parent = $('#results'); parent.replaceChildren();
   $('#resume').hidden = active?.status !== 'running';
   const result = active?.result;
+  $('#export-packet').hidden = !result;
+  $('#results-note').hidden = !result;
   if (!result) { element('p', 'No research results saved for this packet yet.', parent); return; }
   if (result.partial) element('p', 'Partial results: some sources or the summary were unavailable.', parent);
   if (active.submittedIntake) {
     const details = element('details', undefined, parent);
     element('summary', 'Original submitted intake for these results', details);
-    element('pre', JSON.stringify(active.submittedIntake, null, 2), details);
+    element('p', active.submittedIntake.question, details);
+    element('p', active.submittedIntake.facts, details);
+    element('p', Object.values(active.submittedIntake.jurisdiction || {}).filter(Boolean).join(', '), details);
   }
-  listSection(parent, 'Research notes', result.warnings);
+  const notes = element('details', undefined, parent);
+  element('summary', 'Research scope and limitations', notes);
+  listSection(notes, 'Research notes', result.warnings);
   listSection(parent, 'Issues identified', result.plan?.issues);
   listSection(parent, 'Missing information', [...new Set([...(result.plan?.missing_information || []), ...(result.report?.missing_information || [])])]);
   element('h3', 'Findings', parent);
@@ -186,13 +192,15 @@ function renderResults() {
     }
     if (!annotations.length) element('p', 'No verified annotations for this source.', article);
     const text = element('details', undefined, article);
-    element('summary', 'Retrieved text and metadata', text);
+    element('summary', 'Read retrieved document text', text);
     element('pre', source.text || 'Document text was not available.', text);
-    element('pre', JSON.stringify(source.metadata || {}, null, 2), text);
+    for (const name of ['court', 'date', 'identifier', 'authority_status']) {
+      if (source.metadata?.[name]) element('p', String(source.metadata[name]), text);
+    }
   }
   listSection(parent, 'Next research steps', result.report?.next_steps);
   listSection(parent, 'Limitations', result.report?.limitations);
-  listSection(parent, 'Provider status', Object.entries(result.providers || {}).map(([name, status]) => `${name}: ${status.status}${status.message ? ' — ' + status.message : ''}`));
+  listSection(notes, 'Source availability', Object.entries(result.providers || {}).map(([name, status]) => `${name}: ${status.status}${status.message ? ' — ' + status.message : ''}`));
 }
 function backendOrigin(value) {
   const url = new URL(value);
@@ -263,7 +271,7 @@ form.oninput = () => { clearTimeout(saveTimer); saveTimer = setTimeout(saveCurre
 form.onchange = saveCurrent;
 document.querySelectorAll('[data-add]').forEach(button => { button.onclick = () => { addRow(button.dataset.add); saveCurrent(); }; });
 $('#save-draft').onclick = async () => { await saveCurrent(); message(storageAvailable ? 'Draft saved.' : 'Draft kept in this tab. Export it before closing.'); };
-$('#new-packet').onclick = async () => { await saveCurrent(); selectPacket(freshPacket()); await saveCurrent(); };
+$('#new-packet').onclick = async () => { $('#history-dialog').close(); await saveCurrent(); selectPacket(freshPacket()); await saveCurrent(); };
 $('#resume').onclick = () => {
   if (!connected || active.backend !== connectedOrigin) { message('Connect to the backend used for this packet: ' + active.backend); return; }
   poll(active);
@@ -341,4 +349,7 @@ async function init() {
     connect();
   }
 }
+document.querySelectorAll('[data-open]').forEach(button => { button.onclick = () => document.getElementById(button.dataset.open).showModal(); });
+document.querySelectorAll('[data-close]').forEach(button => { button.onclick = () => document.getElementById(button.dataset.close).close(); });
+form.addEventListener('invalid', event => { const details = event.target.closest('details'); if (details) details.open = true; }, true);
 init();
