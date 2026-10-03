@@ -16,7 +16,7 @@ from research import research, state_name, STATES
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT.parent / 'frontend'
-PUBLIC_FILES = {'/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/styles.css': 'styles.css'}
+PUBLIC_FILES = {'/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/report.js': 'report.js', '/styles.css': 'styles.css'}
 
 
 def settings():
@@ -73,6 +73,7 @@ def create_app(config=None, researcher=None):
     @app.get('/')
     @app.get('/index.html')
     @app.get('/app.js')
+    @app.get('/report.js')
     @app.get('/styles.css')
     def frontend():
         return send_from_directory(FRONTEND, PUBLIC_FILES[request.path])

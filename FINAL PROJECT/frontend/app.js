@@ -149,9 +149,9 @@ function safeLink(parent, url, title) {
 }
 function renderResults() {
   const parent = $('#results'); parent.replaceChildren();
-  $('#resume').hidden = active?.status !== 'running';
   const result = active?.result;
   $('#export-packet').hidden = !result;
+  $('#print-packet').hidden = !result;
   $('#results-note').hidden = !result;
   if (!result) { element('p', 'No research results saved for this packet yet.', parent); return; }
   if (result.partial) element('p', 'Partial results: some sources or the summary were unavailable.', parent);
@@ -184,6 +184,13 @@ function renderResults() {
     element('h4', `${source.id}: ${source.title}`, article);
     element('p', `${source.provider} · ${source.coverage}${source.truncated ? ' · text truncated' : ''}`, article);
     safeLink(article, source.url, 'Open original document');
+    const analysis = (result.report?.source_analyses || []).find(item => item.source_id === source.id);
+    if (analysis) {
+      for (const [heading, text] of [['Summary', analysis.summary], ['Potential use in this matter', analysis.potential_use], ['Distinctions and verification', analysis.limitations]]) {
+        element('h4', heading, article); element('p', text, article);
+      }
+    }
+
     const annotations = (result.report?.annotations || []).filter(a => a.source_id === source.id);
     for (const annotation of annotations) {
       element('blockquote', annotation.quote, article);
@@ -272,10 +279,6 @@ form.onchange = saveCurrent;
 document.querySelectorAll('[data-add]').forEach(button => { button.onclick = () => { addRow(button.dataset.add); saveCurrent(); }; });
 $('#save-draft').onclick = async () => { await saveCurrent(); message(storageAvailable ? 'Draft saved.' : 'Draft kept in this tab. Export it before closing.'); };
 $('#new-packet').onclick = async () => { $('#history-dialog').close(); await saveCurrent(); selectPacket(freshPacket()); await saveCurrent(); };
-$('#resume').onclick = () => {
-  if (!connected || active.backend !== connectedOrigin) { message('Connect to the backend used for this packet: ' + active.backend); return; }
-  poll(active);
-};
 $('#clear-history').onclick = async () => {
   if (!confirm('Delete all local packets and drafts? Export anything you want to keep first. Server jobs are not cancelled.')) return;
   clearTimeout(saveTimer);
@@ -286,9 +289,24 @@ $('#clear-history').onclick = async () => {
 };
 $('#export-packet').onclick = async () => {
   await saveCurrent();
-  const url = URL.createObjectURL(new Blob([JSON.stringify(active, null, 2)], { type: 'application/json' }));
-  const link = element('a'); link.href = url; link.download = 'research-packet-' + active.id + '.json';
+  if (!active?.result) return;
+  const html = buildResearchReport(active);
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  const link = element('a'); link.href = url;
+  link.download = (active.title || 'research-report').replace(/[^a-z0-9 -]/gi, '').slice(0, 80) + '.html';
   link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  message('Annotated report downloaded. Open it in a browser to read, print, or save as PDF.');
+};
+$('#print-packet').onclick = () => {
+  if (!active?.result) return;
+  const reportWindow = window.open('', '_blank');
+  if (!reportWindow) { message('Allow pop-ups to print, or download the report and print it from your browser.'); return; }
+  reportWindow.opener = null;
+  reportWindow.document.open();
+  reportWindow.document.write(buildResearchReport(active));
+  reportWindow.document.close();
+  reportWindow.focus();
+  setTimeout(() => { if (!reportWindow.closed) reportWindow.print(); }, 300);
 };
 form.onsubmit = async event => {
   event.preventDefault();

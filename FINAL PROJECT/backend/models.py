@@ -61,7 +61,15 @@ class Annotation(Model):
     explanation: str
 
 
+class SourceAnalysis(Model):
+    source_id: str
+    summary: str
+    potential_use: str
+    limitations: str
+
+
 class Report(Model):
+    source_analyses: list[SourceAnalysis]
     findings: list[Finding]
     annotations: list[Annotation]
     missing_information: list[str]

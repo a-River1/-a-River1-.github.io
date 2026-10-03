@@ -18,7 +18,8 @@ def researcher(intake, config):
     release.wait(15)
     return {'sources':[{'id':'S1','title':'Test opinion <script>bad()</script>', 'provider':'courtlistener',
              'url':'https://www.courtlistener.com/', 'coverage':'opinion_text', 'text':'Original source passage.', 'metadata':{}}],
-        'report':{'findings':[{'statement':'Test finding','source_ids':['S1'],'relationship':'background'}],
+        'report':{'source_analyses':[{'source_id':'S1','summary':'Test source summary','potential_use':'May inform the argument, subject to verification.','limitations':'Confirm jurisdiction.'}],
+                  'findings':[{'statement':'Test finding','source_ids':['S1'],'relationship':'background'}],
                   'annotations':[{'source_id':'S1','quote':'Original source passage.','explanation':'Test explanation'}],
                   'next_steps':['Verify jurisdiction'], 'limitations':['Synthetic test only']},
         'plan':{'issues':['Test issue'], 'missing_information':['Dates']}, 'providers':{'courtlistener':{'status':'ok'}}, 'warnings':[]}
@@ -56,6 +57,7 @@ try:
         expect(page.locator('#connection-status')).to_contain_text('Connected.')
         page.locator('#research').click()
         expect(page.locator('#packet-status')).to_contain_text('Research is running')
+        assert page.locator('#resume').count() == 0
         page.reload()
         expect(page.locator('#packet-status')).to_contain_text('pending')
         assert page.locator('#token').count() == 0
@@ -68,7 +70,31 @@ try:
             page.locator('#export-packet').click()
         content=Path(download.value.path()).read_text()
         assert 'accessToken' not in content
-        assert json.loads(content)['result']['sources'][0]['id']=='S1'
+        assert download.value.suggested_filename.endswith('.html')
+        assert '<mark' in content and 'Original source passage.' in content
+        assert '<script>bad()</script>' not in content
+        assert 'Potential use in this matter' in content
+        assert 'https://www.courtlistener.com/' in content
+        assert 'Test explanation' in content
+        assert 'jobId' not in content
+        assert 'Test source summary' in content
+        with page.expect_popup() as popup:
+            page.locator('#print-packet').click()
+        printable = popup.value
+        expect(printable.locator('mark')).to_have_text('Original source passage.')
+        expect(printable.locator('aside')).to_contain_text('Test explanation')
+        assert printable.locator('script').count() == 0
+        printable.close()
+        edge_html = page.evaluate('''() => buildResearchReport({title:'Unicode test',result:{sources:[{id:'S1',title:'Case',text:'A😀BCDE',url:'javascript:alert(1)'}],report:{annotations:[
+            {source_id:'S1',quote:'😀BC',start:1,end:4,explanation:'First'},
+            {source_id:'S1',quote:'CDE',start:3,end:6,explanation:'Second'},
+            {source_id:'S1',quote:'Not present',explanation:'Fabricated'}]}}})''')
+        inspection=context.new_page()
+        inspection.set_content(edge_html)
+        assert inspection.locator('aside').count()==2
+        assert inspection.locator('.source-text mark').all_text_contents()==['😀B','C','DE']
+        assert inspection.locator('a[href^="javascript:"]').count()==0
+        inspection.close()
         context.close()
         context = pw.chromium.launch_persistent_context(profile, **options)
         page = context.pages[0]

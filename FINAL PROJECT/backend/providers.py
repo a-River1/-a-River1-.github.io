@@ -119,6 +119,11 @@ class Providers:
             'The server will attach the original verbatim text; never invent passage IDs. '
             'Explanations are tentative AI interpretation. When passages are relevant, include 3 to 6 '
             'annotations explaining their relevance or limits. '
+            'Write for a practicing attorney. For each source, provide a source_analyses entry with its '
+            'source_id, a concise summary, potential_use explaining how it might support or undermine '
+            'an argument in this matter, and limitations explaining factual distinctions, jurisdiction '
+            'and missing verification. Ground this analysis in retrieved material and frame use '
+            'conditionally; if a source is irrelevant or metadata-only, say so rather than inventing a holding. '
             'Do not infer full holdings from snippets. Do not calculate deadlines. '
             'Identify missing information, retrieval gaps and what an attorney should verify. '
             'Next steps must be research or fact-gathering tasks, not uncited legal conclusions.',

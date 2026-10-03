@@ -36,6 +36,7 @@ def validate_report(report, sources):
         annotations.append({**annotation.model_dump(), 'quote':passage['text'], 'start':passage['start'],
                             'end':passage['end'], 'quote_verified':True})
     result = report.model_dump()
+    result['source_analyses'] = [item.model_dump() for item in report.source_analyses if item.source_id in by_id]
     result.update(findings=findings, annotations=annotations)
     if rejected:
         result['limitations'].append(f'{rejected} unsupported findings or annotations were withheld.')

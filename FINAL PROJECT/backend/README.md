@@ -21,7 +21,7 @@ Supported names: OPENAI_API_KEY, COURTLISTENER_API_KEY, GOVINFO_API_KEY, OPENSTA
 
 ## API contract
 
-The API is public and requires no access token. Provider keys remain server-side. Research job IDs are unguessable bearer references: anyone with a job ID can read or delete that job. There is no endpoint listing jobs. Keep packet exports private because they include job IDs and research content. This is not an account-based privacy system.
+The API is public and requires no access token. Provider keys remain server-side. Research job IDs are unguessable bearer references: anyone with a job ID can read or delete that job. There is no endpoint listing jobs. Keep raw API responses private because they include job IDs and research content. Readable report downloads exclude job IDs, but contain the research facts and sources. This is not an account-based privacy system.
 
 | Method | Route | Result |
 | --- | --- | --- |

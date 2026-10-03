@@ -72,7 +72,7 @@ class BackendTests(unittest.TestCase):
                 time.sleep(.01)
         self.assertEqual(self.client.post('/api/research',json=INTAKE,headers=self.auth).status_code,429)
     def test_quote_and_citation_validation(self):
-        report=Report(findings=[{'statement':'Good','source_ids':['S1'],'relationship':'background'},
+        report=Report(source_analyses=[], findings=[{'statement':'Good','source_ids':['S1'],'relationship':'background'},
                                {'statement':'Invented','source_ids':['S99'],'relationship':'supporting'}],
             annotations=[{'source_id':'S1','passage_id':'S1-P1','explanation':'Relevant'},
                          {'source_id':'S1','passage_id':'S1-P999','explanation':'Invalid'}],

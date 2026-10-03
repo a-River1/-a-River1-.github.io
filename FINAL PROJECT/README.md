@@ -47,7 +47,7 @@ Drafts save automatically after typing pauses and when fields change. Packets an
 - Storage includes legal facts, pasted document text and research results. It is not encrypted or an account-based service. Anyone using the same browser profile may access it.
 - API keys are never sent to the browser. Reopening automatically reconnects to the research service.
 - Clearing browser data, using private browsing, changing browsers/devices or changing the website origin may remove or separate history. `localhost` and `127.0.0.1` are different origins; use one consistently.
-- **Export current packet** downloads JSON for backup. Import/sync is not implemented yet.
+- **Download annotated report** downloads a standalone HTML document with citations, source summaries, attorney-focused application notes, numbered annotations, and highlighted retrieved text. Open it in any browser. **Print / Save as PDF** opens a print-ready report; choose Save as PDF in the browser print dialog. Original PDFs are linked, not modified. New source summaries/application notes require a new research run; older packets export the analysis they already contain. Import/sync is not implemented yet.
 - Delete one packet or all local history with the provided buttons. Local deletion does not cancel a server job or delete third-party provider data.
 - Jobs already accepted by the server can be checked after reconnecting to the same backend. Server jobs expire after 30 minutes or disappear on restart. A closed browser cannot download a completed result; reconnect before expiry to save it locally.
 - If storage fills or is blocked, the website displays a warning and keeps the packet in memory; export before closing. If submission is interrupted, its acceptance may be unknown. Avoid immediately resubmitting a potentially paid job.
@@ -58,6 +58,7 @@ The future public website should serve this frontend and backend together. For a
 
 - `frontend/index.html`: intake, history, connection and results interface.
 - `frontend/app.js`: API integration, background polling, IndexedDB storage and rendering.
+- `frontend/report.js`: offline annotated report generation and print layout.
 - `frontend/styles.css`: minimal readable layout.
 - `backend/app.py`: Flask endpoints and explicit frontend file serving.
 - `backend/README.md`: backend API contract and setup.
