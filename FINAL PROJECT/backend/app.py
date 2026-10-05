@@ -10,13 +10,13 @@ from dotenv import dotenv_values
 from flask import Flask, jsonify, request, send_from_directory
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException
-from models import Intake
-from providers import KEYS, ProviderError, key
+from models import Intake, ChatRequest
+from providers import KEYS, ProviderError, Providers, key
 from research import research, state_name, STATES
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT.parent / 'frontend'
-PUBLIC_FILES = {'/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/report.js': 'report.js', '/styles.css': 'styles.css'}
+PUBLIC_FILES = {'/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/chat.js': 'chat.js', '/report.js': 'report.js', '/styles.css': 'styles.css'}
 
 
 def settings():
@@ -24,7 +24,7 @@ def settings():
     return {**dotenv_values(ROOT.parent/'.env'), **dotenv_values(ROOT/'.env'), **os.environ}
 
 
-def create_app(config=None, researcher=None):
+def create_app(config=None, researcher=None, chat_responder=None):
     cfg = settings() if config is None else dict(config)
     app = Flask(__name__, static_folder=None)
     app.config.update(MAX_CONTENT_LENGTH=200_000)
@@ -33,6 +33,9 @@ def create_app(config=None, researcher=None):
     lock = threading.Lock()
     app.extensions['research_pool'] = pool
     runner = researcher or research
+    chat_runner = chat_responder or Providers(cfg).chat
+    chat_slots = threading.BoundedSemaphore(2)
+    chat_submissions = []
     origins = {s.strip().rstrip('/') for s in cfg.get('ALLOWED_ORIGINS', '').split(',') if s.strip()}
 
     @app.before_request
@@ -74,6 +77,7 @@ def create_app(config=None, researcher=None):
     @app.get('/index.html')
     @app.get('/app.js')
     @app.get('/report.js')
+    @app.get('/chat.js')
     @app.get('/styles.css')
     def frontend():
         return send_from_directory(FRONTEND, PUBLIC_FILES[request.path])
@@ -82,6 +86,31 @@ def create_app(config=None, researcher=None):
     def configuration():
         return jsonify(providers={name:bool(key(cfg,name)) for name in KEYS}, states=STATES,
                        country='US', intake_schema=Intake.model_json_schema())
+
+    @app.post('/api/chat')
+    def chat_reply():
+        if not request.is_json:
+            return jsonify(error='json_required'), 415
+        try:
+            chat = ChatRequest.model_validate(request.get_json())
+        except ValidationError:
+            return jsonify(error='invalid_chat', message='Enter a question of 1–3,000 characters and at most ten prior messages.'), 422
+        if not key(cfg, 'openai'):
+            return jsonify(error='not_configured', message='The assistant is not configured. Please contact the site owner.'), 503
+        if not chat_slots.acquire(blocking=False):
+            return jsonify(error='chat_busy', message='The assistant is busy. Please try again shortly.'), 429
+        try:
+            with lock:
+                now = time.monotonic()
+                chat_submissions[:] = [t for t in chat_submissions if now-t < 3600]
+                if len(chat_submissions) >= 30:
+                    return jsonify(error='chat_rate_limited', message='The assistant has reached its hourly limit. Please try again later.'), 429
+                chat_submissions.append(now)
+            return jsonify(answer=chat_runner(chat), source_verified=False)
+        except ProviderError as exc:
+            return jsonify(error='chat_unavailable', message=str(exc)), 502
+        finally:
+            chat_slots.release()
 
     def prune(capacity=20):
         now = time.monotonic()

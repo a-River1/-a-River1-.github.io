@@ -24,7 +24,8 @@ def researcher(intake, config):
                   'next_steps':['Verify jurisdiction'], 'limitations':['Synthetic test only']},
         'plan':{'issues':['Test issue'], 'missing_information':['Dates']}, 'providers':{'courtlistener':{'status':'ok'}}, 'warnings':[]}
 
-app = create_app({'OPENAI_API_KEY':'fake'}, researcher=researcher)
+app = create_app({'OPENAI_API_KEY':'fake'}, researcher=researcher,
+                 chat_responder=lambda chat: 'A helpful answer to '+chat.message+' <script>bad()</script>')
 server = make_server('127.0.0.1', 0, app, threaded=True)
 threading.Thread(target=server.serve_forever,daemon=True).start()
 url = f'http://127.0.0.1:{server.server_port}'
@@ -37,6 +38,20 @@ try:
         page.on('pageerror',lambda error:errors.append(str(error)))
         page.goto(url)
         expect(page.locator('#storage-status')).to_contain_text('ready')
+        page.locator('#chat-toggle').click()
+        expect(page.locator('#chat-panel')).to_be_visible()
+        page.locator('#chat-question').fill('What is mediation?')
+        page.locator('#chat-send').click()
+        expect(page.locator('#chat-status')).to_contain_text('Answer ready')
+        expect(page.locator('#chat-messages')).to_contain_text('A helpful answer')
+        assert page.locator('#chat-messages script').count()==0
+        page.locator('#chat-question').fill('How does it differ from arbitration?')
+        page.locator('#chat-send').click()
+        expect(page.locator('#chat-messages .assistant')).to_have_count(2)
+        page.locator('#chat-clear').click()
+        expect(page.locator('#chat-messages .assistant')).to_have_count(0)
+        page.locator('#chat-close').click()
+        expect(page.locator('#chat-panel')).to_be_hidden()
         page.locator('[name=title]').fill('Saved housing research')
         page.locator('[name=question]').fill('What legal authorities apply to a withheld housing deposit?')
         page.locator('[name=facts]').fill('The landlord retained the deposit without giving any explanation after moving out.')
@@ -108,6 +123,8 @@ try:
         page.reload()
         expect(page.locator('#history')).to_contain_text('No saved packets')
         page.set_viewport_size({'width':390,'height':844})
+        page.locator('#chat-toggle').click()
+        expect(page.locator('#chat-panel')).to_be_visible()
         assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
         context.close()
         blocked = pw.chromium.launch(**options)

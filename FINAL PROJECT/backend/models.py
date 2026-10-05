@@ -75,3 +75,14 @@ class Report(Model):
     missing_information: list[str]
     next_steps: list[str]
     limitations: list[str]
+
+
+class ChatMessage(Model):
+    role: Literal['user', 'assistant']
+    content: str = Field(min_length=1, max_length=8000)
+
+
+class ChatRequest(Model):
+    message: str = Field(min_length=1, max_length=3000)
+    history: list[ChatMessage] = Field(default_factory=list, max_length=10)
+    location: str = Field(default='', max_length=200)
