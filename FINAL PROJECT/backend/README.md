@@ -21,7 +21,7 @@ Supported names: OPENAI_API_KEY, COURTLISTENER_API_KEY, GOVINFO_API_KEY, OPENSTA
 
 ## API contract
 
-The API is public and requires no access token. Provider keys remain server-side. Research job IDs are unguessable bearer references: anyone with a job ID can read or delete that job. There is no endpoint listing jobs. Keep raw API responses private because they include job IDs and research content. Readable report downloads exclude job IDs, but contain the research facts and sources. This is not an account-based privacy system.
+Visitors do not need a login or manually entered token. GET /api/config establishes a signed, HttpOnly anonymous browser-session cookie and returns csrf_token. Send the cookie on subsequent requests and X-CSRF-Token on POST/DELETE. Research jobs belong to that session: another session receives the same 404 as an unknown job, even with the correct job ID. Owner identifiers are never included in research responses. Provider keys remain server-side. Report downloads contain sensitive research content and should be handled privately.
 
 | Method | Route | Result |
 | --- | --- | --- |
@@ -41,8 +41,10 @@ PowerShell example:
     facts = "The landlord retained the deposit after the lease ended without an explanation."
     jurisdiction = @{ country = "US"; state = "NY" }
 } | ConvertTo-Json | Set-Variable -Name researchBody
-$job = Invoke-RestMethod http://127.0.0.1:5000/api/research -Method Post -ContentType application/json -Body $researchBody
-Invoke-RestMethod ("http://127.0.0.1:5000" + $job.poll_url)
+$connection = Invoke-RestMethod http://127.0.0.1:5000/api/config -SessionVariable researchSession
+$researchHeaders = @{ 'X-CSRF-Token' = $connection.csrf_token }
+$job = Invoke-RestMethod http://127.0.0.1:5000/api/research -Method Post -ContentType application/json -Body $researchBody -WebSession $researchSession -Headers $researchHeaders
+Invoke-RestMethod ("http://127.0.0.1:5000" + $job.poll_url) -WebSession $researchSession
 ```
 
 Poll again until status is completed or failed. Input errors return 422; rejected browser origins 403; excessive payload 413; non-JSON input 415; busy/rate limit 429; missing OpenAI configuration 503. Worker failures return status=failed in the polling response. Health success does not prove API credit or provider availability.
@@ -76,3 +78,12 @@ Tests use synthetic provider responses, spend no API credits, and cover HTTP con
 - CourtListener: https://wiki.free.law/c/courtlistener/help/api/rest/v4/search/
 - GovInfo: https://github.com/usgpo/api
 - Open States: https://docs.openstates.org/api-v3/
+
+
+### Browser session protection
+
+Use the frontend served by the backend on the same HTTPS origin (the Render URL). Cookies use HttpOnly and SameSite=Lax; on Render or HOST=0.0.0.0 they also require HTTPS. Scripts cannot read the session cookie. A matching CSRF header is required for mutations, and browser origins are checked. Security headers restrict executable scripts, embedding, referrer disclosure and response caching. Only exact frontend files are served.
+
+Set SESSION_SECRET to a long, randomly generated secret on the server; render.yaml generates one for Blueprint deployments. Existing manually configured Render services can add it in Environment. Without it a fresh random signing secret is generated at each startup, safely invalidating older sessions. Sessions expire after 30 days; clearing cookies also loses access to pending server jobs. Saved local packets remain available. Use one server process because jobs are in memory.
+
+This is browser isolation, not individual accounts: people sharing a browser profile can access its stored packets. Stolen session cookies, compromised devices, malicious same-origin scripts, hosting access and provider processing remain outside this guarantee. The backend necessarily processes plaintext input; this is not end-to-end encryption. Keep ALLOWED_ORIGINS restricted to trusted sites; cross-site embedding is not supported by the Lax cookie policy. Completed jobs are removed lazily on subsequent research requests after their 30-minute retention window, or when capacity is needed; restart clears memory. Rotate any API credentials previously disclosed in chat or committed to source control.

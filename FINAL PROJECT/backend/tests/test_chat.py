@@ -13,6 +13,7 @@ class ChatTests(unittest.TestCase):
             return 'A general explanation.'
         self.app=create_app({'OPENAI_API_KEY':'fake'}, chat_responder=answer)
         self.client=self.app.test_client()
+        self.client.environ_base['HTTP_X_CSRF_TOKEN'] = self.client.get('/api/config').json['csrf_token']
     def tearDown(self):
         self.app.extensions['research_pool'].shutdown(wait=True)
     def test_chat_and_followup(self):
@@ -41,7 +42,9 @@ class ChatTests(unittest.TestCase):
     def test_failure_releases_capacity(self):
         def fail(chat): raise ProviderError('Provider unavailable')
         app=create_app({'OPENAI_API_KEY':'fake'},chat_responder=fail)
+        client = app.test_client()
+        client.environ_base['HTTP_X_CSRF_TOKEN'] = client.get('/api/config').json['csrf_token']
         try:
             for _ in range(3):
-                self.assertEqual(app.test_client().post('/api/chat',json={'message':'Hi'}).status_code,502)
+                self.assertEqual(client.post('/api/chat',json={'message':'Hi'}).status_code,502)
         finally: app.extensions['research_pool'].shutdown(wait=True)

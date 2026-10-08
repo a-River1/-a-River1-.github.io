@@ -36,14 +36,13 @@
     // Only successful turns enter context. A failed request leaves the draft for retry.
     try {
       if (location.protocol === 'file:') throw new Error('Open the hosted website to use the assistant.');
-      const base = backendOrigin(document.getElementById('backend-url').value.trim());
-      const response = await fetch(base + '/api/chat', {
-        method:'POST', headers:{'Content-Type':'application/json'},
+      if (!connected) await connect();
+      if (!connected) throw new Error('Cannot connect to the assistant. Please try again shortly.');
+      const data = await api('/api/chat', {
+        method:'POST',
         body:JSON.stringify({message:text, history:history.slice(-10), location:document.getElementById('chat-location').value.trim()}),
         signal:AbortSignal.timeout(130000),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || 'The assistant is unavailable. Please try again shortly.');
       if (typeof data.answer !== 'string' || !data.answer.trim()) throw new Error('No answer was returned. Please try again.');
       bubble('user', text); bubble('assistant', data.answer);
       history.push({role:'user',content:text}, {role:'assistant',content:data.answer});

@@ -8,6 +8,8 @@ services:
     startCommand: python backend/app.py
     healthCheckPath: /api/health
     envVars:
+      - key: SESSION_SECRET
+        generateValue: true
       - key: HOST
         value: 0.0.0.0
       - key: OPENAI_API_KEY

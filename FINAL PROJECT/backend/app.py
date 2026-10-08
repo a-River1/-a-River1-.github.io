@@ -7,7 +7,8 @@ import secrets
 import threading
 import time
 from dotenv import dotenv_values
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, session
+from datetime import timedelta
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException
 from models import Intake, ChatRequest
@@ -27,7 +28,13 @@ def settings():
 def create_app(config=None, researcher=None, chat_responder=None):
     cfg = settings() if config is None else dict(config)
     app = Flask(__name__, static_folder=None)
-    app.config.update(MAX_CONTENT_LENGTH=200_000)
+    app.config.update(MAX_CONTENT_LENGTH=200_000,
+                      SECRET_KEY=cfg.get('SESSION_SECRET') or secrets.token_hex(32),
+                      SESSION_COOKIE_NAME='paralegal_session',
+                      SESSION_COOKIE_HTTPONLY=True,
+                      SESSION_COOKIE_SECURE=bool(cfg.get('RENDER')) or cfg.get('HOST') == '0.0.0.0',
+                      SESSION_COOKIE_SAMESITE='Lax',
+                      PERMANENT_SESSION_LIFETIME=timedelta(days=30))
     pool = ThreadPoolExecutor(max_workers=2)
     jobs, submissions = OrderedDict(), []
     lock = threading.Lock()
@@ -48,15 +55,25 @@ def create_app(config=None, researcher=None, chat_responder=None):
             return '', 204
         if request.path == '/api/health' or (request.path in PUBLIC_FILES and request.method in ('GET', 'HEAD')):
             return None
+        if request.path.startswith('/api/') and request.method in ('POST', 'DELETE', 'PUT', 'PATCH'):
+            expected = session.get('csrf')
+            supplied = request.headers.get('X-CSRF-Token', '')
+            if not expected or not secrets.compare_digest(expected, supplied):
+                return jsonify(error='session_required', message='Reconnect to the research service and try again.'), 403
 
     @app.after_request
     def headers(response):
         response.headers.update({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
+        response.headers.update({
+            'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
+            'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
+            'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'})
         origin = request.headers.get('Origin')
         if origin in origins:
             response.headers['Access-Control-Allow-Origin'] = origin
-            response.headers['Vary'] = 'Origin'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            response.vary.add('Origin')
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-CSRF-Token'
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, OPTIONS'
         return response
 
@@ -84,8 +101,13 @@ def create_app(config=None, researcher=None, chat_responder=None):
 
     @app.get('/api/config')
     def configuration():
+        if not session.get('owner'):
+            session.clear()
+            session['owner'] = secrets.token_urlsafe(32)
+            session['csrf'] = secrets.token_urlsafe(32)
+            session.permanent = True
         return jsonify(providers={name:bool(key(cfg,name)) for name in KEYS}, states=STATES,
-                       country='US', intake_schema=Intake.model_json_schema())
+                       country='US', intake_schema=Intake.model_json_schema(), csrf_token=session['csrf'])
 
     @app.post('/api/chat')
     def chat_reply():
@@ -146,7 +168,8 @@ def create_app(config=None, researcher=None, chat_responder=None):
             if sum(j['status']=='running' for j in jobs.values()) >= 2 or len(submissions)>=10:
                 return jsonify(error='busy_or_rate_limited', message='Two concurrent jobs and ten submissions per hour are allowed.'), 429
             job_id = secrets.token_urlsafe(24)
-            jobs[job_id] = {'status':'running'}
+            owner = session['owner']
+            jobs[job_id] = {'status':'running', 'owner':owner}
             submissions.append(now)
 
         def work():
@@ -157,7 +180,7 @@ def create_app(config=None, researcher=None, chat_responder=None):
             except Exception:
                 result = {'status':'failed', 'error':'Research failed; no conclusions were generated.'}
             with lock:
-                jobs[job_id] = {**result, 'finished':time.monotonic()}
+                jobs[job_id] = {**result, 'finished':time.monotonic(), 'owner':owner}
         try:
             pool.submit(work)
         except RuntimeError:
@@ -171,14 +194,14 @@ def create_app(config=None, researcher=None, chat_responder=None):
         with lock:
             prune()
             job = jobs.get(job_id)
-            if not job:
+            if not job or job['owner'] != session.get('owner'):
                 return jsonify(error='not_found_or_expired'), 404
             if request.method == 'DELETE':
                 if job['status']=='running':
                     return jsonify(error='job_still_running'), 409
                 del jobs[job_id]
                 return '', 204
-            return jsonify({k:v for k,v in job.items() if k!='finished'})
+            return jsonify({k:v for k,v in job.items() if k not in ('finished', 'owner')})
 
     return app
 

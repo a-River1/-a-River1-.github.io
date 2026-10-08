@@ -21,6 +21,7 @@ class BackendTests(unittest.TestCase):
     def setUp(self):
         self.app = create_app(CONFIG, researcher=lambda i,c:{'sources':[], 'report':None})
         self.client = self.app.test_client()
+        self.client.environ_base['HTTP_X_CSRF_TOKEN'] = self.client.get('/api/config').json['csrf_token']
         self.auth = {}
     def tearDown(self):
         self.app.extensions['research_pool'].shutdown(wait=True)

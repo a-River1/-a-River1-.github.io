@@ -217,10 +217,11 @@ function backendOrigin(value) {
   }
   return url.origin;
 }
+let csrfToken = '';
 async function api(path, options = {}) {
   let response;
   try {
-    response = await fetch(connectedOrigin + path, { ...options, headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}) }, signal: AbortSignal.timeout(30000) });
+    response = await fetch(connectedOrigin + path, { ...options, credentials: 'include', headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(csrfToken && options.method ? { 'X-CSRF-Token': csrfToken } : {}) }, signal: options.signal || AbortSignal.timeout(30000) });
   } catch { throw new Error('Cannot reach the backend. Check that Python is running and this frontend origin is allowed.'); }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -262,12 +263,14 @@ async function poll(packet) {
 }
 
 async function connect() {
-  connected = false; connectedOrigin = '';
+  connected = false; connectedOrigin = ''; csrfToken = '';
   try {
     connectedOrigin = backendOrigin($('#backend-url').value.trim());
-    connected = true;
     const config = await api('/api/config');
     if (!config.providers || !config.states) throw new Error('This address is not the expected research backend.');
+    if (!config.csrf_token) throw new Error('The backend needs the latest security update.');
+    csrfToken = config.csrf_token;
+    connected = true;
     $('#connection-status').textContent = 'Connected. ' + Object.entries(config.providers).map(([p, ready]) => `${p}: ${ready ? 'configured' : 'missing key'}`).join('; ');
     for (const packet of packets.values()) if (packet.status === 'running') poll(packet);
   } catch (error) { connected = false; $('#connection-status').textContent = error.message; }

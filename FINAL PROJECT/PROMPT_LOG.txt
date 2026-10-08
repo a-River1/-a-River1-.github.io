@@ -1428,3 +1428,25 @@ I’ll find the insertion line in `PROMPT_LOG.txt`, add the available conversati
 
 Additional export note:
 - The transition annotation identifies the fresh Flask final-project implementation; BOTH versions used APIs.
+
+
+----
+2026-10-08 | Browser-session privacy improvements
+USER:
+Ok, make the user's information more secure such thaty noe xternal user can access sensitivei informatino about another use at any point.  Explain to me how this works and add this prompt and response to the PROMPT_LOG.txt file
+
+ASSISTANT:
+Implemented stronger privacy protections without requiring users to log in.
+
+- **Private browser sessions:** Each browser gets an automatically created, signed session cookie. It contains no legal information, and JavaScript cannot read it. On Render, it is sent only over HTTPS.
+- **Ownership checks:** The server checks that session before returning or deleting research. Another visitor cannot access a packet merely by obtaining its job ID; they receive a generic ?not found? response.
+- **Request protection:** Research, chat, and deletion requests require a matching security token, supplied automatically by the website. Additional browser protections restrict scripts, prevent embedding, and discourage caching sensitive responses.
+- **History stays local:** Saved packets remain in the user's browser, as requested.
+
+All 23 backend tests passed, including cross-session access tests. Browser checks passed for chat, research, saved history, and reports.
+
+**Deploy the updated code to Render for these protections to become live.** The deployment configuration can generate a SESSION_SECRET. Without one, the server uses a fresh random secret at startup, invalidating previous sessions when it restarts.
+
+This does not guarantee absolute privacy: someone sharing the same browser profile can still read its saved history, and research information still goes to the backend and relevant API providers. Compromised devices or stolen session cookies also remain risks. Previously exposed API keys should be replaced.
+
+Added this prompt and response to FINAL PROJECT/PROMPT_LOG.txt.
